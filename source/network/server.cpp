@@ -1,5 +1,8 @@
 #include "network_server.hpp"
 #include "logger.hpp"
+#include "user_manager.hpp"
+#include "fs_init.hpp"
+#include "file_ops.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -178,12 +181,15 @@ void NetworkServer::processRequestsThread() {
 }
 
 void NetworkServer::handleClientConnection(int socket_fd) {
-    char buffer[4096];
     std::string session_id;
     std::string current_user;
     bool authenticated = false;
     
+    UserManager& user_mgr = UserManager::getInstance();
+    FileOperations& file_ops = FileOperations::getInstance();
+    
     while (is_running_) {
+        char buffer[4096];
         int bytes_read = recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
 
         if (bytes_read < 0) {
@@ -206,9 +212,20 @@ void NetworkServer::handleClientConnection(int socket_fd) {
         }
 
         std::string operation = request_str.substr(0, delim1);
-        std::string data = request_str.substr(delim1 + 1);
+        std::string rest = request_str.substr(delim1 + 1);
+        
+        size_t delim2 = rest.find('|');
+        std::string recv_session = "";
+        std::string data = rest;
+        
+        if (delim2 != std::string::npos) {
+            recv_session = rest.substr(0, delim2);
+            data = rest.substr(delim2 + 1);
+        }
 
         std::string response;
+
+        LOG_DEBUG("NET_SRV", 0, "Operation: " + operation + ", User: " + current_user);
 
         if (operation == "LOGIN") {
             size_t delim = data.find('|');
@@ -216,64 +233,154 @@ void NetworkServer::handleClientConnection(int socket_fd) {
                 std::string user = data.substr(0, delim);
                 std::string pass = data.substr(delim + 1);
                 
-                authenticated = true;
-                current_user = user;
-                session_id = "session_" + user + "_" + std::to_string(std::time(nullptr));
-                response = "SUCCESS|Logged in as " + user;
+                UserSession user_session;
+                OFSErrorCodes result = user_mgr.loginUser(user, pass, user_session);
+                
+                if (result == OFSErrorCodes::SUCCESS) {
+                    authenticated = true;
+                    current_user = user;
+                    session_id = user_session.session_id;
+                    response = "SUCCESS|Logged in as " + user;
+                    LOG_INFO("NET_SRV", 0, "User logged in: " + user);
+                } else {
+                    response = "ERROR|Login failed";
+                    LOG_WARN("NET_SRV", 0, "Login failed for user: " + user);
+                }
             } else {
                 response = "ERROR|Invalid login format";
             }
         } else if (operation == "LOGOUT") {
-            authenticated = false;
-            current_user.clear();
-            response = "SUCCESS|Logged out";
+            if (authenticated) {
+                user_mgr.logoutUser(session_id);
+                authenticated = false;
+                current_user.clear();
+                session_id.clear();
+                response = "SUCCESS|Logged out";
+                LOG_INFO("NET_SRV", 0, "User logged out");
+            } else {
+                response = "ERROR|Not logged in";
+            }
         } else if (operation == "CREATE_FILE") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|File created";
+                size_t delim = data.find('|');
+                std::string path = data;
+                uint32_t perms = 0644;
+                
+                if (delim != std::string::npos) {
+                    path = data.substr(0, delim);
+                    perms = std::stoul(data.substr(delim + 1));
+                }
+                
+                OFSErrorCodes result = file_ops.createFile(path, current_user, perms);
+                if (result == OFSErrorCodes::SUCCESS) {
+                    response = "SUCCESS|File created: " + path;
+                } else {
+                    response = "ERROR|Failed to create file: " + std::to_string(static_cast<int>(result));
+                }
             }
         } else if (operation == "DELETE_FILE") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|File deleted";
+                OFSErrorCodes result = file_ops.deleteFile(data);
+                if (result == OFSErrorCodes::SUCCESS) {
+                    response = "SUCCESS|File deleted: " + data;
+                } else {
+                    response = "ERROR|Failed to delete file: " + std::to_string(static_cast<int>(result));
+                }
             }
         } else if (operation == "READ_FILE") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|File contents";
+                std::string file_data;
+                OFSErrorCodes result = file_ops.readFile(data, file_data);
+                if (result == OFSErrorCodes::SUCCESS) {
+                    response = "SUCCESS|" + file_data;
+                } else {
+                    response = "ERROR|Failed to read file: " + std::to_string(static_cast<int>(result));
+                }
             }
         } else if (operation == "WRITE_FILE") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|File written";
+                size_t delim = data.find('|');
+                if (delim != std::string::npos) {
+                    std::string path = data.substr(0, delim);
+                    std::string content = data.substr(delim + 1);
+                    
+                    OFSErrorCodes result = file_ops.writeFile(path, content);
+                    if (result == OFSErrorCodes::SUCCESS) {
+                        response = "SUCCESS|File written: " + path;
+                    } else {
+                        response = "ERROR|Failed to write file: " + std::to_string(static_cast<int>(result));
+                    }
+                } else {
+                    response = "ERROR|Invalid write format";
+                }
             }
         } else if (operation == "LIST_DIR") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|/\n  ..";
+                std::vector<std::string> entries;
+                OFSErrorCodes result = file_ops.listDirectory(data, entries);
+                if (result == OFSErrorCodes::SUCCESS) {
+                    response = "SUCCESS|";
+                    for (const auto& entry : entries) {
+                        response += entry + "\n";
+                    }
+                } else {
+                    response = "ERROR|Failed to list directory: " + std::to_string(static_cast<int>(result));
+                }
             }
         } else if (operation == "CREATE_DIR") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|Directory created";
+                size_t delim = data.find('|');
+                std::string path = data;
+                uint32_t perms = 0755;
+                
+                if (delim != std::string::npos) {
+                    path = data.substr(0, delim);
+                    perms = std::stoul(data.substr(delim + 1));
+                }
+                
+                OFSErrorCodes result = file_ops.createDirectory(path, current_user, perms);
+                if (result == OFSErrorCodes::SUCCESS) {
+                    response = "SUCCESS|Directory created: " + path;
+                } else {
+                    response = "ERROR|Failed to create directory: " + std::to_string(static_cast<int>(result));
+                }
             }
         } else if (operation == "DELETE_DIR") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|Directory deleted";
+                OFSErrorCodes result = file_ops.deleteDirectory(data);
+                if (result == OFSErrorCodes::SUCCESS) {
+                    response = "SUCCESS|Directory deleted: " + data;
+                } else {
+                    response = "ERROR|Failed to delete directory: " + std::to_string(static_cast<int>(result));
+                }
             }
         } else if (operation == "GET_META") {
             if (!authenticated) {
                 response = "ERROR|Not authenticated";
             } else {
-                response = "SUCCESS|size=0|owner=" + current_user;
+                FileEntry entry;
+                OFSErrorCodes result = file_ops.getMetadata(data, entry);
+                if (result == OFSErrorCodes::SUCCESS) {
+                    response = "SUCCESS|size=" + std::to_string(entry.size) + 
+                              "|owner=" + std::string(entry.owner) +
+                              "|permissions=" + std::to_string(entry.permissions);
+                } else {
+                    response = "ERROR|Failed to get metadata: " + std::to_string(static_cast<int>(result));
+                }
             }
         } else {
             response = "ERROR|Unknown operation: " + operation;
@@ -288,6 +395,7 @@ void NetworkServer::handleClientConnection(int socket_fd) {
     }
 
     close(socket_fd);
+    LOG_DEBUG("NET_SRV", 0, "Client disconnected");
 }
 
 OFSErrorCodes NetworkServer::parseJsonRequest(const std::string& json, Request& out_req) {

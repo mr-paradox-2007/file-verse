@@ -30,6 +30,12 @@ public:
     void printHelp() const;
     void run();
 
+    void displayMainMenu() const;
+    void displayConnectionMenu();
+    void displayAuthMenu();
+    void displayFileMenu();
+    void displayDirectoryMenu();
+
 private:
     std::string host_;
     uint16_t port_;

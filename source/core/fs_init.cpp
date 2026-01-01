@@ -13,6 +13,8 @@ FileSystemManager& FileSystemManager::getInstance() {
 
 OFSErrorCodes FileSystemManager::initialize(const std::string& omni_path,
                                             const Config& config) {
+    std::lock_guard<std::mutex> lock(fs_mutex_);
+    
     if (is_initialized_) {
         LOG_WARN("FS_INIT", 501, "File system already initialized");
         return OFSErrorCodes::ERROR_INVALID_OPERATION;
@@ -49,6 +51,8 @@ OFSErrorCodes FileSystemManager::initialize(const std::string& omni_path,
 }
 
 OFSErrorCodes FileSystemManager::shutdown() {
+    std::lock_guard<std::mutex> lock(fs_mutex_);
+    
     if (!is_initialized_) {
         LOG_WARN("FS_INIT", 502, "File system not initialized");
         return OFSErrorCodes::ERROR_INVALID_OPERATION;
@@ -56,8 +60,12 @@ OFSErrorCodes FileSystemManager::shutdown() {
 
     LOG_INFO("FS_INIT", 0, "Shutting down file system");
 
+    saveFileTable();
+    saveUserTable();
+
     users_.clear();
     files_.clear();
+    file_data_.clear();
     free_blocks_.clear();
 
     is_initialized_ = false;
@@ -74,7 +82,8 @@ OFSErrorCodes FileSystemManager::loadHeader() {
     file.read(reinterpret_cast<char*>(&header_), sizeof(OMNIHeader));
     file.close();
 
-    if (std::string(header_.magic) != "OMNIFS0") {
+    std::string magic_str(header_.magic);
+    if (magic_str.find("OMNIFS") != 0) {
         LOG_ERROR("FS_INIT", 504, "Invalid magic number in header");
         return OFSErrorCodes::ERROR_INVALID_OPERATION;
     }
@@ -128,11 +137,12 @@ OFSErrorCodes FileSystemManager::loadFileTable() {
 
     files_.clear();
     uint32_t file_count = 0;
-    char buffer[sizeof(FileEntry)];
 
-    while (file.read(buffer, sizeof(FileEntry)) && file_count < 10000) {
+    for (uint32_t i = 0; i < 10000 && file_count < config_.max_files; i++) {
         FileEntry entry;
-        std::memcpy(&entry, buffer, sizeof(FileEntry));
+        file.read(reinterpret_cast<char*>(&entry), sizeof(FileEntry));
+
+        if (!file.good()) break;
 
         if (entry.name[0] != '\0') {
             files_.push_back(entry);
@@ -153,18 +163,22 @@ OFSErrorCodes FileSystemManager::initializeFreeSpaceBitmap() {
 
     uint32_t metadata_blocks = (header_.total_size / 10) / header_.block_size;
     for (uint32_t i = 0; i < metadata_blocks; i++) {
-        free_blocks_[i] = false;
+        if (i < free_blocks_.size()) {
+            free_blocks_[i] = false;
+        }
     }
 
     for (const auto& file : files_) {
-        uint32_t file_blocks = (file.size + header_.block_size - 1) / header_.block_size;
-        uint32_t start_block = file.inode % (header_.total_size / header_.block_size);
+        if (file.size > 0) {
+            uint32_t file_blocks = (file.size + header_.block_size - 1) / header_.block_size;
+            uint32_t start_block = (file.inode * 10) % total_blocks;
 
-        for (uint32_t i = 0; i < file_blocks && start_block < total_blocks; i++) {
-            if (start_block < free_blocks_.size()) {
-                free_blocks_[start_block] = false;
+            for (uint32_t i = 0; i < file_blocks && start_block < total_blocks; i++) {
+                if (start_block < free_blocks_.size()) {
+                    free_blocks_[start_block] = false;
+                }
+                start_block++;
             }
-            start_block++;
         }
     }
 
@@ -172,6 +186,71 @@ OFSErrorCodes FileSystemManager::initializeFreeSpaceBitmap() {
                             std::to_string(getFreeBlockCount()) + " free blocks");
 
     return OFSErrorCodes::SUCCESS;
+}
+
+void FileSystemManager::saveFileTable() {
+    std::lock_guard<std::mutex> lock(fs_mutex_);
+    
+    std::fstream file(omni_path_, std::ios::in | std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+        LOG_ERROR("FS_INIT", 507, "Cannot open .omni file for writing file table");
+        return;
+    }
+
+    uint32_t metadata_offset = header_.user_table_offset + 
+                               (header_.max_users * sizeof(UserInfo));
+    file.seekp(metadata_offset);
+
+    for (const auto& entry : files_) {
+        file.write(reinterpret_cast<const char*>(&entry), sizeof(FileEntry));
+    }
+
+    file.close();
+    LOG_DEBUG("FS_INIT", 0, "File table saved: " + std::to_string(files_.size()) + " entries");
+}
+
+void FileSystemManager::saveUserTable() {
+    std::lock_guard<std::mutex> lock(fs_mutex_);
+    
+    std::fstream file(omni_path_, std::ios::in | std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+        LOG_ERROR("FS_INIT", 508, "Cannot open .omni file for writing user table");
+        return;
+    }
+
+    file.seekp(header_.user_table_offset);
+
+    std::vector<UserInfo> user_array(header_.max_users);
+    uint32_t index = 0;
+    
+    for (const auto& pair : users_) {
+        if (index < header_.max_users) {
+            user_array[index++] = pair.second;
+        }
+    }
+
+    for (uint32_t i = 0; i < header_.max_users; i++) {
+        file.write(reinterpret_cast<const char*>(&user_array[i]), sizeof(UserInfo));
+    }
+
+    file.close();
+    LOG_DEBUG("FS_INIT", 0, "User table saved: " + std::to_string(users_.size()) + " users");
+}
+
+std::string FileSystemManager::readFileData(const std::string& path) {
+    std::lock_guard<std::mutex> lock(fs_mutex_);
+    
+    auto it = file_data_.find(path);
+    if (it != file_data_.end()) {
+        return it->second;
+    }
+    
+    return "";
+}
+
+void FileSystemManager::writeFileData(const std::string& path, const std::string& data) {
+    std::lock_guard<std::mutex> lock(fs_mutex_);
+    file_data_[path] = data;
 }
 
 uint32_t FileSystemManager::getFreeBlockCount() const {
@@ -248,6 +327,11 @@ void FileSystemManager::removeFileEntry(const std::string& path) {
                                     return std::string(entry.name) == path;
                                 }),
                  files_.end());
+    
+    auto it = file_data_.find(path);
+    if (it != file_data_.end()) {
+        file_data_.erase(it);
+    }
 }
 
 }

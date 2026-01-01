@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <unistd.h>
 #include <chrono>
 
@@ -21,6 +22,8 @@ CliClient::~CliClient() {
 }
 
 bool CliClient::connect() {
+    std::cout << "Connecting to " << host_ << ":" << port_ << std::endl;
+    
     socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (socket_ < 0) {
         std::cerr << "Error: Cannot create socket" << std::endl;
@@ -31,10 +34,18 @@ bool CliClient::connect() {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port_);
 
-    if (inet_pton(AF_INET, host_.c_str(), &server_addr.sin_addr) <= 0) {
-        std::cerr << "Error: Invalid address/address not supported" << std::endl;
-        close(socket_);
-        return false;
+    // Try inet_pton first (for numeric IPs), then gethostbyname (for hostnames)
+    if (inet_pton(AF_INET, host_.c_str(), &server_addr.sin_addr) > 0) {
+        // Successfully parsed as numeric IP
+    } else {
+        // Try hostname resolution
+        struct hostent* host_ent = gethostbyname(host_.c_str());
+        if (!host_ent) {
+            std::cerr << "Error: Could not resolve hostname: " << host_ << std::endl;
+            close(socket_);
+            return false;
+        }
+        std::memcpy(&server_addr.sin_addr, host_ent->h_addr, host_ent->h_length);
     }
 
     if (::connect(socket_, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
@@ -44,7 +55,7 @@ bool CliClient::connect() {
     }
 
     connected_ = true;
-    std::cout << "✓ Connected to server at " << host_ << ":" << port_ << std::endl;
+    std::cout << "[OK] Connected to server at " << host_ << ":" << port_ << std::endl;
     return true;
 }
 
@@ -56,7 +67,7 @@ void CliClient::disconnect() {
     connected_ = false;
     session_id_.clear();
     current_user_.clear();
-    std::cout << "✓ Disconnected from server" << std::endl;
+    std::cout << "[OK] Disconnected from server" << std::endl;
 }
 
 bool CliClient::isConnected() const {
@@ -116,11 +127,11 @@ bool CliClient::login(const std::string& username, const std::string& password) 
         current_user_ = username;
         session_id_ = "session_" + username + "_" + 
                      std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
-        std::cout << "✓ Logged in as " << username << std::endl;
+        std::cout << "[OK] Logged in as " << username << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Login failed: " << response << std::endl;
+    std::cerr << "[FAIL] Login failed: " << response << std::endl;
     return false;
 }
 
@@ -142,11 +153,11 @@ bool CliClient::logout() {
     if (response.find("SUCCESS") != std::string::npos) {
         current_user_.clear();
         session_id_.clear();
-        std::cout << "✓ Logged out successfully" << std::endl;
+        std::cout << "[OK] Logged out successfully" << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Logout failed" << std::endl;
+    std::cerr << "[FAIL] Logout failed" << std::endl;
     return false;
 }
 
@@ -167,11 +178,11 @@ bool CliClient::createFile(const std::string& path, uint32_t permissions) {
     }
 
     if (response.find("SUCCESS") != std::string::npos) {
-        std::cout << "✓ File created: " << path << std::endl;
+        std::cout << "[OK] File created: " << path << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Failed to create file: " << response << std::endl;
+    std::cerr << "[FAIL] Failed to create file: " << response << std::endl;
     return false;
 }
 
@@ -191,11 +202,11 @@ bool CliClient::deleteFile(const std::string& path) {
     }
 
     if (response.find("SUCCESS") != std::string::npos) {
-        std::cout << "✓ File deleted: " << path << std::endl;
+        std::cout << "[OK] File deleted: " << path << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Failed to delete file: " << response << std::endl;
+    std::cerr << "[FAIL] Failed to delete file: " << response << std::endl;
     return false;
 }
 
@@ -214,11 +225,11 @@ bool CliClient::readFile(const std::string& path, std::string& out_data) {
     }
 
     if (out_data.find("SUCCESS") != std::string::npos) {
-        std::cout << "✓ File read: " << path << std::endl;
+        std::cout << "[OK] File read: " << path << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Failed to read file: " << out_data << std::endl;
+    std::cerr << "[FAIL] Failed to read file: " << out_data << std::endl;
     return false;
 }
 
@@ -239,11 +250,11 @@ bool CliClient::writeFile(const std::string& path, const std::string& data) {
     }
 
     if (response.find("SUCCESS") != std::string::npos) {
-        std::cout << "✓ File written: " << path << std::endl;
+        std::cout << "[OK] File written: " << path << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Failed to write file: " << response << std::endl;
+    std::cerr << "[FAIL] Failed to write file: " << response << std::endl;
     return false;
 }
 
@@ -284,11 +295,11 @@ bool CliClient::createDirectory(const std::string& path, uint32_t permissions) {
     }
 
     if (response.find("SUCCESS") != std::string::npos) {
-        std::cout << "✓ Directory created: " << path << std::endl;
+        std::cout << "[OK] Directory created: " << path << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Failed to create directory: " << response << std::endl;
+    std::cerr << "[FAIL] Failed to create directory: " << response << std::endl;
     return false;
 }
 
@@ -308,11 +319,11 @@ bool CliClient::deleteDirectory(const std::string& path) {
     }
 
     if (response.find("SUCCESS") != std::string::npos) {
-        std::cout << "✓ Directory deleted: " << path << std::endl;
+        std::cout << "[OK] Directory deleted: " << path << std::endl;
         return true;
     }
 
-    std::cerr << "✗ Failed to delete directory: " << response << std::endl;
+    std::cerr << "[FAIL] Failed to delete directory: " << response << std::endl;
     return false;
 }
 
@@ -337,9 +348,9 @@ bool CliClient::getMetadata(const std::string& path) {
 }
 
 void CliClient::printHelp() const {
-    std::cout << "\n╔════════════════════════════════════════════════════════╗" << std::endl;
-    std::cout << "║         OFS - CLI Client Help                            ║" << std::endl;
-    std::cout << "╚════════════════════════════════════════════════════════╝" << std::endl;
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "                   OFS - CLI Client Help" << std::endl;
+    std::cout << "================================================================" << std::endl;
     std::cout << "\nCommands:\n" << std::endl;
     std::cout << "  connect <host> [port]     - Connect to server" << std::endl;
     std::cout << "  disconnect                - Disconnect from server" << std::endl;
@@ -365,123 +376,326 @@ void CliClient::printHelp() const {
     std::cout << "  > disconnect" << std::endl << std::endl;
 }
 
+void CliClient::displayMainMenu() const {
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "                   OFS - Client Main Menu" << std::endl;
+    std::cout << "================================================================" << std::endl;
+    std::cout << "\n[1] Connection Management" << std::endl;
+    std::cout << "[2] Authentication" << std::endl;
+    std::cout << "[3] File Operations" << std::endl;
+    std::cout << "[4] Directory Operations" << std::endl;
+    std::cout << "[5] View System Status" << std::endl;
+    std::cout << "[6] Show Help" << std::endl;
+    std::cout << "[0] Exit" << std::endl;
+    std::cout << "\nSelect option: ";
+}
+
+void CliClient::displayConnectionMenu() {
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "              Connection Management Menu" << std::endl;
+    std::cout << "================================================================" << std::endl;
+    std::cout << "\n[1] Connect to Server" << std::endl;
+    std::cout << "[2] Disconnect from Server" << std::endl;
+    std::cout << "[3] Check Connection Status" << std::endl;
+    std::cout << "[0] Back to Main Menu" << std::endl;
+    std::cout << "\nSelect option: ";
+    
+    std::string choice;
+    std::getline(std::cin, choice);
+    
+    if (choice == "1") {
+        std::cout << "Enter server host (default: localhost): ";
+        std::string host;
+        std::getline(std::cin, host);
+        if (host.empty()) host = "localhost";
+        
+        std::cout << "Enter server port (default: 8080): ";
+        std::string port_str;
+        std::getline(std::cin, port_str);
+        uint16_t port = 8080;
+        if (!port_str.empty()) {
+            try {
+                port = static_cast<uint16_t>(std::stoul(port_str));
+            } catch (...) {
+                port = 8080;
+            }
+        }
+        
+        host_ = host;
+        port_ = port;
+        connect();
+    } else if (choice == "2") {
+        if (connected_) {
+            disconnect();
+        } else {
+            std::cout << "Not connected to any server" << std::endl;
+        }
+    } else if (choice == "3") {
+        if (connected_) {
+            std::cout << "Connected to: " << host_ << ":" << port_ << std::endl;
+        } else {
+            std::cout << "Not connected" << std::endl;
+        }
+    } else if (choice == "0") {
+        return;
+    } else {
+        std::cout << "Invalid option" << std::endl;
+    }
+}
+
+void CliClient::displayAuthMenu() {
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "                  Authentication Menu" << std::endl;
+    std::cout << "================================================================" << std::endl;
+    std::cout << "\n[1] Login" << std::endl;
+    std::cout << "[2] Logout" << std::endl;
+    std::cout << "[3] Current User Status" << std::endl;
+    std::cout << "[0] Back to Main Menu" << std::endl;
+    std::cout << "\nSelect option: ";
+    
+    std::string choice;
+    std::getline(std::cin, choice);
+    
+    if (choice == "1") {
+        if (!connected_) {
+            std::cout << "Error: Not connected to server" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter username: ";
+        std::string user;
+        std::getline(std::cin, user);
+        
+        std::cout << "Enter password: ";
+        std::string pass;
+        std::getline(std::cin, pass);
+        
+        login(user, pass);
+    } else if (choice == "2") {
+        logout();
+    } else if (choice == "3") {
+        if (!current_user_.empty()) {
+            std::cout << "Logged in as: " << current_user_ << std::endl;
+        } else {
+            std::cout << "Not logged in" << std::endl;
+        }
+    } else if (choice == "0") {
+        return;
+    } else {
+        std::cout << "Invalid option" << std::endl;
+    }
+}
+
+void CliClient::displayFileMenu() {
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "                  File Operations Menu" << std::endl;
+    std::cout << "================================================================" << std::endl;
+    std::cout << "\n[1] Create File" << std::endl;
+    std::cout << "[2] Delete File" << std::endl;
+    std::cout << "[3] Read File" << std::endl;
+    std::cout << "[4] Write to File" << std::endl;
+    std::cout << "[5] Get File Info" << std::endl;
+    std::cout << "[0] Back to Main Menu" << std::endl;
+    std::cout << "\nSelect option: ";
+    
+    std::string choice;
+    std::getline(std::cin, choice);
+    
+    if (choice == "1") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter file path: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        std::cout << "Enter permissions (default: 0644): ";
+        std::string perms_str;
+        std::getline(std::cin, perms_str);
+        uint32_t perms = 0644;
+        if (!perms_str.empty()) {
+            try {
+                perms = std::stoul(perms_str, nullptr, 8);
+            } catch (...) {
+                perms = 0644;
+            }
+        }
+        
+        createFile(path, perms);
+    } else if (choice == "2") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter file path to delete: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        deleteFile(path);
+    } else if (choice == "3") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter file path to read: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        std::string data;
+        if (readFile(path, data)) {
+            std::cout << "File contents:" << std::endl;
+            std::cout << data << std::endl;
+        }
+    } else if (choice == "4") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter file path: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        std::cout << "Enter content to write: ";
+        std::string content;
+        std::getline(std::cin, content);
+        
+        writeFile(path, content);
+    } else if (choice == "5") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter file path: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        getMetadata(path);
+    } else if (choice == "0") {
+        return;
+    } else {
+        std::cout << "Invalid option" << std::endl;
+    }
+}
+
+void CliClient::displayDirectoryMenu() {
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "              Directory Operations Menu" << std::endl;
+    std::cout << "================================================================" << std::endl;
+    std::cout << "\n[1] Create Directory" << std::endl;
+    std::cout << "[2] Delete Directory" << std::endl;
+    std::cout << "[3] List Directory" << std::endl;
+    std::cout << "[0] Back to Main Menu" << std::endl;
+    std::cout << "\nSelect option: ";
+    
+    std::string choice;
+    std::getline(std::cin, choice);
+    
+    if (choice == "1") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter directory path: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        std::cout << "Enter permissions (default: 0755): ";
+        std::string perms_str;
+        std::getline(std::cin, perms_str);
+        uint32_t perms = 0755;
+        if (!perms_str.empty()) {
+            try {
+                perms = std::stoul(perms_str, nullptr, 8);
+            } catch (...) {
+                perms = 0755;
+            }
+        }
+        
+        createDirectory(path, perms);
+    } else if (choice == "2") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter directory path to delete: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        deleteDirectory(path);
+    } else if (choice == "3") {
+        if (!connected_ || session_id_.empty()) {
+            std::cout << "Error: Not logged in" << std::endl;
+            return;
+        }
+        
+        std::cout << "Enter directory path: ";
+        std::string path;
+        std::getline(std::cin, path);
+        
+        listDirectory(path);
+    } else if (choice == "0") {
+        return;
+    } else {
+        std::cout << "Invalid option" << std::endl;
+    }
+}
+
 void CliClient::run() {
-    std::cout << "╔════════════════════════════════════════════════════════╗" << std::endl;
-    std::cout << "║         OFS - Command Line Client v1.0                 ║" << std::endl;
-    std::cout << "╚════════════════════════════════════════════════════════╝" << std::endl;
-    std::cout << "Type 'help' for commands, 'exit' to quit\n" << std::endl;
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "           OFS - Command Line Client v1.0" << std::endl;
+    std::cout << "================================================================" << std::endl;
+    std::cout << "\nWelcome to OFS CLI Client" << std::endl;
+    std::cout << "Type 'help' at any menu for more information\n" << std::endl;
 
-    std::string line;
     while (true) {
-        std::cout << "> ";
-        std::getline(std::cin, line);
-
-        if (line.empty()) continue;
-
-        std::istringstream iss(line);
-        std::string cmd;
-        iss >> cmd;
-
-        if (cmd == "exit") {
+        displayMainMenu();
+        
+        std::string choice;
+        std::getline(std::cin, choice);
+        
+        if (choice == "1") {
+            displayConnectionMenu();
+        } else if (choice == "2") {
+            displayAuthMenu();
+        } else if (choice == "3") {
+            displayFileMenu();
+        } else if (choice == "4") {
+            displayDirectoryMenu();
+        } else if (choice == "5") {
+            std::cout << "\n================================================================" << std::endl;
+            std::cout << "                      System Status" << std::endl;
+            std::cout << "================================================================" << std::endl;
             if (connected_) {
-                disconnect();
-            }
-            std::cout << "Goodbye!" << std::endl;
-            break;
-        } else if (cmd == "help") {
-            printHelp();
-        } else if (cmd == "connect") {
-            std::string host;
-            uint16_t port;
-            if (iss >> host >> port) {
-                this->host_ = host;
-                this->port_ = port;
-                connect();
-            } else {
-                std::cerr << "Usage: connect <host> <port>" << std::endl;
-            }
-        } else if (cmd == "disconnect") {
-            if (connected_) {
-                disconnect();
-            }
-        } else if (cmd == "login") {
-            std::string user, pass;
-            iss >> user >> pass;
-            if (!user.empty() && !pass.empty()) {
-                login(user, pass);
-            } else {
-                std::cerr << "Usage: login <username> <password>" << std::endl;
-            }
-        } else if (cmd == "logout") {
-            logout();
-        } else if (cmd == "create") {
-            std::string path;
-            uint32_t perms = 0644;
-            iss >> path;
-            iss >> perms;
-            if (!path.empty()) {
-                createFile(path, perms);
-            }
-        } else if (cmd == "delete") {
-            std::string path;
-            iss >> path;
-            if (!path.empty()) {
-                deleteFile(path);
-            }
-        } else if (cmd == "read") {
-            std::string path;
-            iss >> path;
-            if (!path.empty()) {
-                std::string data;
-                readFile(path, data);
-            }
-        } else if (cmd == "write") {
-            std::string path, data;
-            iss >> path;
-            std::getline(iss, data);
-            if (data[0] == ' ') data = data.substr(1);
-            if (!path.empty() && !data.empty()) {
-                writeFile(path, data);
-            }
-        } else if (cmd == "mkdir") {
-            std::string path;
-            uint32_t perms = 0755;
-            iss >> path;
-            iss >> perms;
-            if (!path.empty()) {
-                createDirectory(path, perms);
-            }
-        } else if (cmd == "rmdir") {
-            std::string path;
-            iss >> path;
-            if (!path.empty()) {
-                deleteDirectory(path);
-            }
-        } else if (cmd == "ls") {
-            std::string path;
-            iss >> path;
-            if (!path.empty()) {
-                listDirectory(path);
-            }
-        } else if (cmd == "info") {
-            std::string path;
-            iss >> path;
-            if (!path.empty()) {
-                getMetadata(path);
-            }
-        } else if (cmd == "status") {
-            if (connected_) {
-                std::cout << "✓ Connected to: " << host_ << ":" << port_ << std::endl;
+                std::cout << "\nConnection Status: Connected" << std::endl;
+                std::cout << "  Server: " << host_ << ":" << port_ << std::endl;
                 if (!current_user_.empty()) {
-                    std::cout << "✓ Logged in as: " << current_user_ << std::endl;
+                    std::cout << "\nAuthentication Status: Logged In" << std::endl;
+                    std::cout << "  User: " << current_user_ << std::endl;
                 } else {
-                    std::cout << "✗ Not logged in" << std::endl;
+                    std::cout << "\nAuthentication Status: Not Logged In" << std::endl;
                 }
             } else {
-                std::cout << "✗ Not connected" << std::endl;
+                std::cout << "\nConnection Status: Not Connected" << std::endl;
+                std::cout << "Authentication Status: Not Logged In" << std::endl;
             }
+        } else if (choice == "6") {
+            printHelp();
+        } else if (choice == "0") {
+            if (connected_) {
+                disconnect();
+            }
+            std::cout << "\nThank you for using OFS Client. Goodbye!" << std::endl;
+            break;
         } else {
-            std::cerr << "Unknown command: " << cmd << " (type 'help' for commands)" << std::endl;
+            std::cout << "\nInvalid option. Please try again." << std::endl;
         }
     }
 }

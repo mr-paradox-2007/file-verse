@@ -2,6 +2,8 @@
 #include "logger.hpp"
 #include <algorithm>
 #include <ctime>
+#include <fstream>
+#include <cstring>
 
 namespace ofs {
 
@@ -33,7 +35,11 @@ OFSErrorCodes FileOperations::createFile(const std::string& path,
     }
 
     FileEntry new_entry(path, EntryType::FILE, 0, permissions, owner, inode);
+    new_entry.created_time = std::time(nullptr);
+    new_entry.modified_time = new_entry.created_time;
+    
     fs.addFileEntry(new_entry);
+    fs.saveFileTable();
 
     LOG_INFO("FILE_OPS", 0, "File created: " + path + " (inode=" +
                             std::to_string(inode) + ", block=" +
@@ -61,6 +67,8 @@ OFSErrorCodes FileOperations::deleteFile(const std::string& path) {
     }
 
     fs.removeFileEntry(path);
+    fs.saveFileTable();
+    
     LOG_INFO("FILE_OPS", 0, "File deleted: " + path);
     return OFSErrorCodes::SUCCESS;
 }
@@ -84,9 +92,10 @@ OFSErrorCodes FileOperations::readFile(const std::string& path,
         return OFSErrorCodes::ERROR_INVALID_OPERATION;
     }
 
-    out_data = "Hello, World!";
+    out_data = fs.readFileData(path);
+    
     LOG_DEBUG("FILE_OPS", 0, "File read: " + path + " (" +
-                            std::to_string(file->size) + " bytes)");
+                            std::to_string(out_data.size()) + " bytes)");
 
     return OFSErrorCodes::SUCCESS;
 }
@@ -107,6 +116,9 @@ OFSErrorCodes FileOperations::writeFile(const std::string& path,
 
     file->size = data.size();
     file->modified_time = std::time(nullptr);
+
+    fs.writeFileData(path, data);
+    fs.saveFileTable();
 
     LOG_INFO("FILE_OPS", 0, "File written: " + path + " (" +
                             std::to_string(data.size()) + " bytes)");
@@ -163,6 +175,8 @@ OFSErrorCodes FileOperations::renameFile(const std::string& old_path,
     file->name[sizeof(file->name) - 1] = '\0';
     file->modified_time = std::time(nullptr);
 
+    fs.saveFileTable();
+
     LOG_INFO("FILE_OPS", 0, "File renamed: " + old_path + " -> " + new_path);
     return OFSErrorCodes::SUCCESS;
 }
@@ -175,11 +189,16 @@ OFSErrorCodes FileOperations::truncateFile(const std::string& path,
         return OFSErrorCodes::ERROR_INVALID_OPERATION;
     }
 
-    const FileEntry* file = fs.getFileByPath(path);
+    FileEntry* file = fs.getFileByPath(path);
     if (file == nullptr) {
         LOG_WARN("FILE_OPS", 620, "File not found: " + path);
         return OFSErrorCodes::ERROR_NOT_FOUND;
     }
+
+    file->size = new_size;
+    file->modified_time = std::time(nullptr);
+    
+    fs.saveFileTable();
 
     LOG_DEBUG("FILE_OPS", 0, "File truncated: " + path + " to " +
                             std::to_string(new_size) + " bytes");
@@ -203,7 +222,11 @@ OFSErrorCodes FileOperations::createDirectory(const std::string& path,
 
     uint32_t inode = getNextInode();
     FileEntry new_entry(path, EntryType::DIRECTORY, 0, permissions, owner, inode);
+    new_entry.created_time = std::time(nullptr);
+    new_entry.modified_time = new_entry.created_time;
+    
     fs.addFileEntry(new_entry);
+    fs.saveFileTable();
 
     LOG_INFO("FILE_OPS", 0, "Directory created: " + path);
     return OFSErrorCodes::SUCCESS;
@@ -228,6 +251,8 @@ OFSErrorCodes FileOperations::deleteDirectory(const std::string& path) {
     }
 
     fs.removeFileEntry(path);
+    fs.saveFileTable();
+    
     LOG_INFO("FILE_OPS", 0, "Directory deleted: " + path);
     return OFSErrorCodes::SUCCESS;
 }
@@ -241,21 +266,33 @@ OFSErrorCodes FileOperations::listDirectory(const std::string& path,
     }
 
     const FileEntry* dir = fs.getFileByPath(path);
-    if (dir == nullptr) {
+    if (dir == nullptr && path != "/") {
         LOG_WARN("FILE_OPS", 627, "Directory not found: " + path);
         return OFSErrorCodes::ERROR_NOT_FOUND;
     }
 
-    if (dir->type != static_cast<uint8_t>(EntryType::DIRECTORY)) {
+    if (dir != nullptr && dir->type != static_cast<uint8_t>(EntryType::DIRECTORY)) {
         LOG_ERROR("FILE_OPS", 628, "Path is not a directory: " + path);
         return OFSErrorCodes::ERROR_INVALID_OPERATION;
     }
 
     out_entries.clear();
+    out_entries.push_back(path);
+    
     for (const auto& file : fs.getFileTable()) {
         std::string file_path(file.name);
-        if (file_path.find(path) == 0) {
-            out_entries.push_back(file_path);
+        
+        if (path == "/") {
+            if (file_path != "/" && file_path.find('/', 1) == std::string::npos) {
+                out_entries.push_back("  " + file_path);
+            }
+        } else {
+            if (file_path.find(path + "/") == 0 && file_path != path) {
+                std::string remainder = file_path.substr(path.length() + 1);
+                if (remainder.find('/') == std::string::npos) {
+                    out_entries.push_back("  " + remainder);
+                }
+            }
         }
     }
 
@@ -291,11 +328,16 @@ OFSErrorCodes FileOperations::setPermissions(const std::string& path,
         return OFSErrorCodes::ERROR_INVALID_OPERATION;
     }
 
-    const FileEntry* file = fs.getFileByPath(path);
+    FileEntry* file = fs.getFileByPath(path);
     if (file == nullptr) {
         LOG_WARN("FILE_OPS", 632, "File not found: " + path);
         return OFSErrorCodes::ERROR_NOT_FOUND;
     }
+
+    file->permissions = permissions;
+    file->modified_time = std::time(nullptr);
+    
+    fs.saveFileTable();
 
     LOG_DEBUG("FILE_OPS", 0, "Permissions updated: " + path + " to " +
                             std::to_string(permissions));

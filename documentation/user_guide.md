@@ -22,17 +22,28 @@ cd file-verse
 
 You should see:
 ```
-╔════════════════════════════════════════════════════════╗
-║         OFS Server v1.0                                  ║
-╚════════════════════════════════════════════════════════╝
+================================================================
+           OFS Server v1.0                                      
+================================================================
 
-Configuration loaded from: default.uconf
+Configuration:
   Port: 8080
   Max Connections: 10
+  Filesystem: data/test.omni
 
-Starting server...
-✓ Server running on localhost:8080
+Initializing filesystem...
+Filesystem initialized successfully
+
+Starting network server...
+
+================================================================
+  Server running on localhost:8080
   Press Ctrl+C to shutdown
+================================================================
+
+Default credentials:
+  Username: admin
+  Password: admin123
 ```
 
 ### 3. Start the CLI Client
@@ -44,11 +55,11 @@ cd file-verse
 ./compiled/ofs_client
 ```
 
-You'll see the client prompt:
+You will see the client prompt:
 ```
-╔════════════════════════════════════════════════════════╗
-║         OFS - Command Line Client v1.0                 ║
-╚════════════════════════════════════════════════════════╝
+================================================================
+           OFS - Command Line Client v1.0                 
+================================================================
 Type 'help' for commands, 'exit' to quit
 
 >
@@ -60,7 +71,7 @@ Type 'help' for commands, 'exit' to quit
 
 ```
 > connect localhost 8080
-✓ Connected to server at localhost:8080
+Connected to server at localhost:8080
 ```
 
 To connect to a different host:
@@ -72,26 +83,26 @@ To connect to a different host:
 
 Default credentials are in `default.uconf`:
 - Username: `admin`
-- Password: `password123`
+- Password: `admin123`
 
 Login:
 ```
-> login admin password123
-✓ Logged in as admin
+> login admin admin123
+Logged in as admin
 ```
 
 Check status:
 ```
 > status
-✓ Connected to: localhost:8080
-✓ Logged in as: admin
+Connected to: localhost:8080
+Logged in as: admin
 ```
 
 ### Creating Files
 
 ```
 > create /document.txt 0644
-✓ File created: /document.txt
+File created: /document.txt
 ```
 
 Permissions:
@@ -103,7 +114,7 @@ Permissions:
 
 ```
 > write /document.txt "This is file content"
-✓ File written: /document.txt
+File written: /document.txt
 ```
 
 Note: Data is sent after path, separated by space.
@@ -112,14 +123,14 @@ Note: Data is sent after path, separated by space.
 
 ```
 > read /document.txt
-✓ File read: /document.txt
+File read: /document.txt
 ```
 
 ### Creating Directories
 
 ```
 > mkdir /projects 0755
-✓ Directory created: /projects
+Directory created: /projects
 ```
 
 ### Listing Directories
@@ -147,27 +158,27 @@ size=0|owner=admin
 Delete file:
 ```
 > delete /document.txt
-✓ File deleted: /document.txt
+File deleted: /document.txt
 ```
 
 Delete directory:
 ```
 > rmdir /projects
-✓ Directory deleted: /projects
+Directory deleted: /projects
 ```
 
 ### Logging Out
 
 ```
 > logout
-✓ Logged out successfully
+Logged out successfully
 ```
 
 ### Disconnecting
 
 ```
 > disconnect
-✓ Disconnected from server
+Disconnected from server
 ```
 
 ### Exiting the Client
@@ -189,10 +200,10 @@ Goodbye!
 
 ### Authentication Commands
 
-| Command | Format                        | Example                   |
-| ------- | ----------------------------- | ------------------------- |
-| Login   | `login <username> <password>` | `login admin password123` |
-| Logout  | `logout`                      | `logout`                  |
+| Command | Format                        | Example                |
+| ------- | ----------------------------- | ---------------------- |
+| Login   | `login <username> <password>` | `login admin admin123` |
+| Logout  | `logout`                      | `logout`               |
 
 ### File Commands
 
@@ -234,7 +245,7 @@ max_filename_length=255   # Max name length
 [security]
 max_users=100
 admin_username=admin
-admin_password=password123
+admin_password=admin123
 require_auth=true
 
 [server]
@@ -260,7 +271,7 @@ After changes, restart both server and client.
 
 **Cause**: Tried operation without logging in
 
-**Solution**: Run `login admin password123` first
+**Solution**: Run `login admin admin123` first
 
 ### "File not found"
 
@@ -275,15 +286,15 @@ After changes, restart both server and client.
 **Solution**:
 1. Disconnect: `disconnect`
 2. Reconnect: `connect localhost 8080`
-3. Login again: `login admin password123`
+3. Login again: `login admin admin123`
 
 ## Example Session
 
 ```bash
 > help
-╔════════════════════════════════════════════════════════╗
-║         OFS - CLI Client Help                            ║
-╚════════════════════════════════════════════════════════╝
+================================================================
+           OFS - CLI Client Help                            
+================================================================
 
 Commands:
 
@@ -292,29 +303,29 @@ Commands:
   ...
 
 > connect localhost 8080
-✓ Connected to server at localhost:8080
+Connected to server at localhost:8080
 
-> login admin password123
-✓ Logged in as admin
+> login admin admin123
+Logged in as admin
 
 > status
-✓ Connected to: localhost:8080
-✓ Logged in as: admin
+Connected to: localhost:8080
+Logged in as: admin
 
 > mkdir /projects 0755
-✓ Directory created: /projects
+Directory created: /projects
 
 > mkdir /projects/cppfs 0755
-✓ Directory created: /projects/cppfs
+Directory created: /projects/cppfs
 
 > create /projects/cppfs/README.txt 0644
-✓ File created: /projects/cppfs/README.txt
+File created: /projects/cppfs/README.txt
 
 > write /projects/cppfs/README.txt "OFS - C++ Filesystem Implementation"
-✓ File written: /projects/cppfs/README.txt
+File written: /projects/cppfs/README.txt
 
 > read /projects/cppfs/README.txt
-✓ File read: /projects/cppfs/README.txt
+File read: /projects/cppfs/README.txt
 
 > ls /projects
 Directory contents of /projects:
@@ -331,10 +342,10 @@ Metadata for /projects/cppfs/README.txt:
 size=0|owner=admin
 
 > logout
-✓ Logged out successfully
+Logged out successfully
 
 > disconnect
-✓ Disconnected from server
+Disconnected from server
 
 > exit
 Goodbye!
@@ -349,7 +360,7 @@ Goodbye!
 
 ## Limitations
 
-- **No Persistence**: Data lost when server restarts
+- **No Persistence**: Data lost when server restarts (this is a known limitation in the current implementation)
 - **No Multi-User**: Single user per session
 - **No Concurrency**: Serial request processing
 - **No Transactions**: No rollback support

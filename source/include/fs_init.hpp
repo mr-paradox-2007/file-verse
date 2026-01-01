@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <mutex>
 
 namespace ofs {
 
@@ -40,6 +41,12 @@ public:
 
     uint32_t allocateBlock();
     void releaseBlock(uint32_t block_num);
+    
+    void saveFileTable();
+    void saveUserTable();
+    
+    std::string readFileData(const std::string& path);
+    void writeFileData(const std::string& path, const std::string& data);
 
 private:
     FileSystemManager() = default;
@@ -56,9 +63,11 @@ private:
     OMNIHeader header_;
     std::unordered_map<std::string, UserInfo> users_;
     std::vector<FileEntry> files_;
+    std::unordered_map<std::string, std::string> file_data_;
     std::vector<bool> free_blocks_;
 
     bool is_initialized_ = false;
+    mutable std::mutex fs_mutex_;
 };
 
 }
