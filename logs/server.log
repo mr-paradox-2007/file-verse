@@ -1,0 +1,20 @@
+[2026-01-01T06:13:23Z] [INFO] [CONFIG] Attempting to parse configuration from: default.uconf
+[2026-01-01T06:13:23Z] [INFO] [CONFIG] Loading default configuration values
+[2026-01-01T06:13:23Z] [DEBUG] [CONFIG] Found section: [filesystem]
+[2026-01-01T06:13:23Z] [DEBUG] [CONFIG] Found section: [security]
+[2026-01-01T06:13:23Z] [DEBUG] [CONFIG] Found section: [server]
+[2026-01-01T06:13:23Z] [INFO] [CONFIG] Configuration validation passed
+[2026-01-01T06:13:23Z] [INFO] [CONFIG] Configuration successfully parsed and validated.
+
+╔════════════════════════════════════════════════════════╗
+║         OFS Server v1.0                                  ║
+╚════════════════════════════════════════════════════════╝
+
+Configuration loaded from: default.uconf
+  Port: 8080
+  Max Connections: 20
+
+Starting server...
+[2026-01-01T06:13:23Z] [INFO] [NET_SRV] Network server initialized on port 8080
+[2026-01-01T06:13:23Z] [ERROR] [NET_SRV] Failed to bind socket to port 8080
+Failed to start server

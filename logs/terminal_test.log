@@ -1,0 +1,2 @@
+[2025-12-31T23:47:41Z] level=INFO module=LOGGER_TEST code=400 msg="This should appear on terminal." file="file-verse/tests/logger_test.cpp" line=172
+[2025-12-31T23:47:41Z] level=INFO module=LOGGER_TEST code=401 msg="This should NOT appear on terminal." file="file-verse/tests/logger_test.cpp" line=181
