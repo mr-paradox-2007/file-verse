@@ -75,7 +75,88 @@ fi
 echo "✓ user_auth_test.o compiled"
 
 echo ""
-echo "[7] Linking format_test executable..."
+echo "[7] Compiling fs_init.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$SOURCE_DIR/core/fs_init.cpp" -o "$COMPILED_DIR/fs_init.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile fs_init.cpp"
+    exit 1
+fi
+echo "✓ fs_init.o compiled"
+
+echo ""
+echo "[8] Compiling file_ops.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$SOURCE_DIR/core/file_ops.cpp" -o "$COMPILED_DIR/file_ops.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile file_ops.cpp"
+    exit 1
+fi
+echo "✓ file_ops.o compiled"
+
+echo ""
+echo "[9] Compiling fs_core_test.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$TESTS_DIR/fs_core_test.cpp" -o "$COMPILED_DIR/fs_core_test.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile fs_core_test.cpp"
+    exit 1
+fi
+echo "✓ fs_core_test.o compiled"
+
+echo ""
+echo "[10] Compiling fifo_queue.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$SOURCE_DIR/network/fifo_queue.cpp" -o "$COMPILED_DIR/fifo_queue.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile fifo_queue.cpp"
+    exit 1
+fi
+echo "✓ fifo_queue.o compiled"
+
+echo ""
+echo "[11] Compiling server.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$SOURCE_DIR/network/server.cpp" -o "$COMPILED_DIR/server.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile server.cpp"
+    exit 1
+fi
+echo "✓ server.o compiled"
+
+echo ""
+echo "[12] Compiling network_test.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$TESTS_DIR/network_test.cpp" -o "$COMPILED_DIR/network_test.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile network_test.cpp"
+    exit 1
+fi
+echo "✓ network_test.o compiled"
+
+echo ""
+echo "[13] Compiling cli_client.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$SOURCE_DIR/client/cli_client.cpp" -o "$COMPILED_DIR/cli_client.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile cli_client.cpp"
+    exit 1
+fi
+echo "✓ cli_client.o compiled"
+
+echo ""
+echo "[14] Compiling cli_main.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$SOURCE_DIR/client/cli_main.cpp" -o "$COMPILED_DIR/cli_main.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile cli_main.cpp"
+    exit 1
+fi
+echo "✓ cli_main.o compiled"
+
+echo ""
+echo "[15] Compiling server_main.cpp..."
+$CXX $CXXFLAGS $INCLUDE_FLAGS -c "$SOURCE_DIR/network/server_main.cpp" -o "$COMPILED_DIR/server_main.o"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to compile server_main.cpp"
+    exit 1
+fi
+echo "✓ server_main.o compiled"
+
+echo ""
+echo "[16] Linking format_test executable..."
 $CXX $CXXFLAGS "$COMPILED_DIR/logger.o" \
                 "$COMPILED_DIR/config_parser.o" \
                 "$COMPILED_DIR/fs_format.o" \
@@ -88,8 +169,9 @@ fi
 echo "✓ format_test executable created"
 
 echo ""
-echo "[8] Linking user_auth_test executable..."
+echo "[17] Linking user_auth_test executable..."
 $CXX $CXXFLAGS "$COMPILED_DIR/logger.o" \
+                "$COMPILED_DIR/config_parser.o" \
                 "$COMPILED_DIR/user_manager.o" \
                 "$COMPILED_DIR/user_auth_test.o" \
                 -lssl -lcrypto \
@@ -99,6 +181,61 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "✓ user_auth_test executable created"
+
+echo ""
+echo "[18] Linking fs_core_test executable..."
+$CXX $CXXFLAGS "$COMPILED_DIR/logger.o" \
+                "$COMPILED_DIR/config_parser.o" \
+                "$COMPILED_DIR/fs_format.o" \
+                "$COMPILED_DIR/fs_init.o" \
+                "$COMPILED_DIR/file_ops.o" \
+                "$COMPILED_DIR/fs_core_test.o" \
+                -o "$COMPILED_DIR/fs_core_test"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to link fs_core_test"
+    exit 1
+fi
+echo "✓ fs_core_test executable created"
+
+echo ""
+echo "[19] Linking network_test executable..."
+$CXX $CXXFLAGS "$COMPILED_DIR/logger.o" \
+                "$COMPILED_DIR/config_parser.o" \
+                "$COMPILED_DIR/fifo_queue.o" \
+                "$COMPILED_DIR/server.o" \
+                "$COMPILED_DIR/network_test.o" \
+                -o "$COMPILED_DIR/network_test"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to link network_test"
+    exit 1
+fi
+echo "✓ network_test executable created"
+
+echo ""
+echo "[20] Linking ofs_server executable..."
+$CXX $CXXFLAGS "$COMPILED_DIR/logger.o" \
+                "$COMPILED_DIR/config_parser.o" \
+                "$COMPILED_DIR/fifo_queue.o" \
+                "$COMPILED_DIR/server.o" \
+                "$COMPILED_DIR/server_main.o" \
+                -o "$COMPILED_DIR/ofs_server"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to link ofs_server"
+    exit 1
+fi
+echo "✓ ofs_server executable created"
+
+echo ""
+echo "[21] Linking ofs_client executable..."
+$CXX $CXXFLAGS "$COMPILED_DIR/logger.o" \
+                "$COMPILED_DIR/cli_client.o" \
+                "$COMPILED_DIR/cli_main.o" \
+                -o "$COMPILED_DIR/ofs_client"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to link ofs_client"
+    exit 1
+fi
+echo "✓ ofs_client executable created"
 
 echo ""
 echo "=========================================="
@@ -124,7 +261,27 @@ AUTH_TEST_RESULT=$?
 
 echo ""
 echo "=========================================="
-if [ $FORMAT_TEST_RESULT -eq 0 ] && [ $AUTH_TEST_RESULT -eq 0 ]; then
+echo "  File System Core Test"
+echo "=========================================="
+echo ""
+
+echo "Running file system core test..."
+"$COMPILED_DIR/fs_core_test"
+FS_TEST_RESULT=$?
+
+echo ""
+echo "=========================================="
+echo "  Network Server & FIFO Queue Test"
+echo "=========================================="
+echo ""
+
+echo "Running network test..."
+"$COMPILED_DIR/network_test"
+NET_TEST_RESULT=$?
+
+echo ""
+echo "=========================================="
+if [ $FORMAT_TEST_RESULT -eq 0 ] && [ $AUTH_TEST_RESULT -eq 0 ] && [ $FS_TEST_RESULT -eq 0 ] && [ $NET_TEST_RESULT -eq 0 ]; then
     echo "  ✓ All tests passed!"
 else
     echo "  ✗ Some tests failed"
