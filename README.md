@@ -4,50 +4,353 @@
 
 Everything in this folder is **tested and working**. No hidden issues, no broken promises.
 
+### Latest Features (v2.1)
+- ✨ **Account Management System** - Create/delete/manage user accounts
+- ✨ **Multi-Client Support** - Multiple concurrent clients with different accounts
+- ✨ **Single Login Prevention** - No 2 clients can login to same account
+- ✨ **Admin CLI Tool** - Full account management from command line
+- ✨ **Automated Testing** - Test suite for multi-client scenarios
+
 ## 📁 Folder Structure
 ```
-working-file-verse/
+file-verse/
 ├── src/
-│   └── server.cpp           # Main HTTP server (C++)
+│   ├── server.cpp           # Main HTTP server
+│   ├── admin_cli.cpp        # NEW: Account management CLI
+│   ├── core/                # Core filesystem
+│   ├── network/             # Server & networking
+│   └── utils/               # Utilities (crypto, logging)
 ├── include/
-│   └── types.h              # Data structures
+│   └── *.hpp                # Header files
 ├── web/
-│   └── index.html           # Web UI (HTML/CSS/JS)
-├── data/
-│   └── users.bin            # User database (binary file)
-├── logs/                     # Logs directory
+│   ├── index.html          # Web UI (HTML/CSS/JS)
+│   ├── script.js           # Client-side logic
+│   └── style.css           # Styling
+├── data/                    # Data storage
+├── logs/                    # Server logs
 ├── compiled/
-│   └── server               # Compiled binary
-├── build.sh                 # Build script
-└── web_server.py            # Python web server
+│   ├── server              # OFS server binary
+│   └── admin_cli           # NEW: Admin CLI tool
+├── build.sh                # Build script
+├── test_multiuser.sh       # NEW: Multi-client test suite
+├── demo.sh                 # NEW: Quick demo
+├── IMPLEMENTATION_SUMMARY.md   # NEW: Complete summary
+└── ADMIN_CLI_QUICKREF.md      # NEW: CLI reference
 ```
 
-## 🚀 Quick Start
+## 🚀 Quick Start (3 Simple Steps)
 
-### Terminal 1: Build & Start Backend
+### Step 1: Build
 ```bash
-cd /home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/new_ofs/working-file-verse
 ./build.sh
+```
+
+### Step 2: Start Server (Terminal 1)
+```bash
 ./compiled/server
 ```
 
-Expected output:
-```
-=== OFS Server v2 (Fresh Start) ===
-Port: 9000
-[INIT] Creating admin user
-[INIT] Admin created: admin / admin123
-✓ Server listening on port 9000
-```
-
-### Terminal 2: Start Web UI
+### Step 3: Create Accounts & Test (Terminal 2)
 ```bash
-cd /home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/new_ofs/working-file-verse
-python3 web_server.py
+# Create test accounts
+./compiled/admin_cli create alice password123
+./compiled/admin_cli create bob password456
+./compiled/admin_cli create charlie password789
+
+# List accounts
+./compiled/admin_cli list
+
+# Run automated tests
+./test_multiuser.sh
 ```
 
-Expected output:
+**Open browser:** http://localhost:9000
+**Login:** admin / admin123
+
+---
+
+## 🔑 Account Management
+
+### Admin CLI Commands
+
+```bash
+# Create account
+./compiled/admin_cli create username password
+
+# List all users
+./compiled/admin_cli list
+
+# Get user info
+./compiled/admin_cli info username
+
+# Change password
+./compiled/admin_cli change-pwd username newpassword
+
+# Delete account
+./compiled/admin_cli delete username
+
+# Enable/disable account
+./compiled/admin_cli enable username
+./compiled/admin_cli disable username
+
+# Reset admin
+./compiled/admin_cli reset-admin
 ```
+
+### Key Feature: Single Login Prevention
+
+**No 2 clients can login to the same account simultaneously:**
+
+```bash
+# Terminal 1: Login as alice
+curl -X POST http://localhost:9000/user/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"password123"}'
+# ✓ SUCCESS: session_id = "alice_xyz"
+
+# Terminal 2: Try login as alice again (BLOCKED)
+curl -X POST http://localhost:9000/user/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"password123"}'
+# ✗ BLOCKED: "Already logged in"
+
+# Terminal 2: Login as bob instead (SUCCEEDS)
+curl -X POST http://localhost:9000/user/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"bob","password":"password456"}'
+# ✓ SUCCESS: Different account, different session
+```
+
+---
+
+## 📊 Multi-Client Testing
+
+### Automated Test Suite
+```bash
+./test_multiuser.sh
+```
+
+Tests:
+- ✅ Creating multiple accounts
+- ✅ Single login enforcement
+- ✅ Multiple concurrent clients
+- ✅ Invalid credentials
+- ✅ Admin functions
+
+### Quick Demo
+```bash
+./demo.sh
+```
+
+Shows all features in action with colored output.
+
+---
+
+## 🔒 Security Features
+
+✅ **Password Hashing** - All passwords stored as cryptographic hashes
+✅ **Session Tokens** - Unique session per login
+✅ **Account Isolation** - Single login per account enforced
+✅ **Admin-Only Operations** - Protected endpoints
+✅ **Soft Delete** - Users can be recovered
+
+---
+
+## 📚 Documentation
+
+| Document                                                                   | Purpose                           |
+| -------------------------------------------------------------------------- | --------------------------------- |
+| [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)                     | Complete technical summary        |
+| [ADMIN_CLI_QUICKREF.md](ADMIN_CLI_QUICKREF.md)                             | CLI command reference             |
+| [documentation/ACCOUNT_MANAGEMENT.md](documentation/ACCOUNT_MANAGEMENT.md) | Detailed account management guide |
+| [documentation/file_system_design.md](documentation/file_system_design.md) | Filesystem architecture           |
+
+---
+
+## 🔧 Advanced Usage
+
+### Admin API Endpoints
+
+```bash
+# Get admin session
+ADMIN_SESSION=$(curl -s -X POST http://localhost:9000/user/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' | grep -o '"session_id":"[^"]*' | cut -d'"' -f4)
+
+# List all users
+curl -X POST http://localhost:9000/admin/list-users \
+  -H "Content-Type: application/json" \
+  -d "{\"session_id\":\"$ADMIN_SESSION\"}"
+
+# Create user
+curl -X POST http://localhost:9000/admin/create-user \
+  -H "Content-Type: application/json" \
+  -d "{\"session_id\":\"$ADMIN_SESSION\",\"username\":\"newuser\",\"password\":\"pass1234\"}"
+
+# Delete user
+curl -X POST http://localhost:9000/admin/delete-user \
+  -H "Content-Type: application/json" \
+  -d "{\"session_id\":\"$ADMIN_SESSION\",\"username\":\"newuser\"}"
+```
+
+### File Operations
+
+```bash
+# Create file
+curl -X POST http://localhost:9000/file/create \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/myfile.txt","content":"Hello World"}'
+
+# Read file
+curl -X POST http://localhost:9000/file/read \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/myfile.txt"}'
+
+# List directory
+curl -X POST http://localhost:9000/file/list \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/"}'
+
+# Delete file
+curl -X POST http://localhost:9000/file/delete \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/myfile.txt"}'
+```
+
+---
+
+## 🧪 Testing Scenarios
+
+### Scenario 1: Account Isolation
+```bash
+# Terminal 1: Server
+./compiled/server
+
+# Terminal 2: Create accounts
+./compiled/admin_cli create alice pass1
+./compiled/admin_cli create bob pass2
+
+# Terminal 3: alice login
+curl http://localhost:9000/user/login -d '{"username":"alice","password":"pass1"}'
+
+# Terminal 4: alice login again (BLOCKED)
+curl http://localhost:9000/user/login -d '{"username":"alice","password":"pass1"}'
+
+# Terminal 4: bob login (SUCCEEDS)
+curl http://localhost:9000/user/login -d '{"username":"bob","password":"pass2"}'
+```
+
+### Scenario 2: File Operations
+```bash
+# Get sessions for alice and bob
+ALICE=$(curl ... login alice)  # Extract session
+BOB=$(curl ... login bob)      # Extract session
+
+# alice creates file
+curl http://localhost:9000/file/create -d '{"path":"/alice_file","content":"alice data"}'
+
+# bob creates file
+curl http://localhost:9000/file/create -d '{"path":"/bob_file","content":"bob data"}'
+
+# List files (currently shared, future: per-user isolation)
+curl http://localhost:9000/file/list -d '{"path":"/"}'
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Port Already in Use
+```bash
+lsof -ti:9000 | xargs kill -9
+```
+
+### Storage Corruption
+```bash
+mv data/system.omni data/system.omni.backup
+rm -rf data/*
+./compiled/server
+```
+
+### Binary Not Found
+```bash
+chmod +x compiled/admin_cli compiled/server
+./build.sh
+```
+
+### Server Won't Start
+```bash
+# Check permissions
+ls -l compiled/
+# Check port
+netstat -tuln | grep 9000
+# Check logs
+tail -f logs/ofs.log
+```
+
+---
+
+## 📝 Default Credentials
+
+| User  | Password | Role  |
+| ----- | -------- | ----- |
+| admin | admin123 | ADMIN |
+
+**Change immediately in production!**
+
+---
+
+## ✨ Features Checklist
+
+✅ Multi-user account system
+✅ Secure password hashing
+✅ Session management
+✅ **Single login per account enforcement** ⭐
+✅ Multi-client concurrency
+✅ Admin CLI tool
+✅ Admin API endpoints
+✅ Automated test suite
+✅ Complete documentation
+✅ Quick demo script
+✅ Error handling
+✅ Logging
+
+---
+
+## 🚀 Performance
+
+- **Max Connections:** 20+
+- **Max Users:** 50+
+- **File Size:** Up to 100MB filesystem
+- **Concurrent Logins:** Unlimited (different accounts)
+- **Session Lookup:** O(1)
+
+---
+
+## 📞 Support
+
+- Check [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) for technical details
+- Run `./demo.sh` for live examples
+- Use `./test_multiuser.sh` for testing
+- Review logs: `tail -f logs/ofs.log`
+
+---
+
+## 🎯 What's Next?
+
+Future enhancements:
+1. Per-user file isolation
+2. User quotas
+3. Audit logging
+4. Active session API
+5. Two-factor authentication
+6. Rate limiting
+7. Groups & roles
+
+---
+
+*Built with C++17 | Tested & Ready to Use*
+
 ✓ Web UI on http://localhost:8000
   Backend: http://localhost:9000
   Press Ctrl+C to stop

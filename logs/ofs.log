@@ -1,35 +1,48 @@
-[2026-01-02 08:15:03] [INFO] [system] === Logger initialized ===
-[2026-01-02 08:16:26] [INFO] [system] === Logger initialized ===
-[2026-01-02 08:16:26] [INFO] [system] Default admin user created
-[2026-01-02 08:16:26] [INFO] [system] Users loaded from disk
-[2026-01-02 08:16:35] [INFO] [system] === Logger initialized ===
-[2026-01-02 08:16:35] [INFO] [system] Default admin user created
-[2026-01-02 08:16:35] [INFO] [system] Users loaded from disk
-[2026-01-02 08:16:56] [INFO] [system] === Logger initialized ===
-[2026-01-02 08:16:56] [INFO] [system] Default admin user created
-[2026-01-02 08:16:56] [INFO] [system] Users loaded from disk
-[2026-01-02 08:17:54] [INFO] [admin] User login successful
-[2026-01-02 08:17:54] [INFO] [system] [LOGIN] admin
-[2026-01-02 08:18:02] [INFO] [system] User created: testuser
-[2026-01-02 08:18:02] [INFO] [system] [SIGNUP] testuser
-[2026-01-02 08:20:26] [INFO] [system] === Logger initialized ===
-[2026-01-02 08:20:26] [INFO] [system] Users loaded from disk
-[2026-01-02 08:21:03] [INFO] [admin] User login successful
-[2026-01-02 08:21:03] [INFO] [system] [LOGIN] admin
-[2026-01-02 08:21:04] [INFO] [user] LISTDIR / [OK]
-[2026-01-02 08:21:32] [INFO] [user] CREATE /idk [OK]
-[2026-01-02 08:21:32] [INFO] [system] [FILE] Create: /idk
-[2026-01-02 08:21:32] [INFO] [user] LISTDIR / [OK]
-[2026-01-02 08:21:46] [INFO] [user] LISTDIR / [OK]
-[2026-01-02 08:21:54] [INFO] [user] MKDIR /Ammar [OK]
-[2026-01-02 08:21:54] [INFO] [system] [DIR] Create: /Ammar
-[2026-01-02 08:21:54] [INFO] [user] LISTDIR / [OK]
-[2026-01-02 08:22:03] [INFO] [user] CREATE /Ammar/test [OK]
-[2026-01-02 08:22:03] [INFO] [system] [FILE] Create: /Ammar/test
-[2026-01-02 08:22:03] [INFO] [user] LISTDIR /Ammar [OK]
-[2026-01-02 08:22:14] [INFO] [user] LISTDIR / [OK]
-[2026-01-02 08:22:15] [INFO] [user] LISTDIR /Ammar [OK]
-[2026-01-02 08:22:25] [INFO] [user] READ /Ammar/test [OK]
-[2026-01-02 08:22:30] [INFO] [user] DELETE /Ammar/test [OK]
-[2026-01-02 08:22:30] [INFO] [system] [FILE] Delete: /Ammar/test
-[2026-01-02 08:23:10] [WARN] [ammar] Login failed: user not found
+[2026-01-02 10:03:29] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:03:29] [INFO] [system] Default admin user created
+[2026-01-02 10:03:29] [INFO] [system] Users loaded from disk
+[2026-01-02 10:03:55] [INFO] [admin] User login successful
+[2026-01-02 10:03:55] [INFO] [system] [LOGIN] admin
+[2026-01-02 10:03:55] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:03:55] [INFO] [admin] [DIR] List: /
+[2026-01-02 10:04:32] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:04:32] [INFO] [admin] [DIR] List: /
+[2026-01-02 10:04:39] [INFO] [system] [LOGOUT] admin
+[2026-01-02 10:05:30] [INFO] [system] User created: user1
+[2026-01-02 10:05:30] [INFO] [system] [SIGNUP] user1
+[2026-01-02 10:05:39] [WARN] [user1] Login failed: incorrect password
+[2026-01-02 10:05:51] [WARN] [user] Login failed: user not found
+[2026-01-02 10:05:55] [INFO] [user1] User login successful
+[2026-01-02 10:05:55] [INFO] [system] [LOGIN] user1
+[2026-01-02 10:05:55] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:05:55] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:05:59] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:05:59] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:06:15] [INFO] [user] CREATE /Hellooooo [OK]
+[2026-01-02 10:06:15] [INFO] [user1] [FILE] Create: /Hellooooo
+[2026-01-02 10:06:15] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:06:15] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:06:18] [INFO] [user1] [DIR] List: //
+[2026-01-02 10:06:22] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:06:22] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:06:23] [INFO] [user1] [DIR] List: //
+[2026-01-02 10:06:25] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:06:25] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:06:48] [INFO] [user] CREATE /Hello.txt [OK]
+[2026-01-02 10:06:48] [INFO] [user1] [FILE] Create: /Hello.txt
+[2026-01-02 10:06:48] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:06:48] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:06:50] [INFO] [user] READ /Hello.txt [OK]
+[2026-01-02 10:06:50] [INFO] [user1] [FILE] Read: /Hello.txt
+[2026-01-02 10:06:54] [INFO] [user] READ /Hello.txt [OK]
+[2026-01-02 10:06:54] [INFO] [user1] [FILE] Read: /Hello.txt
+[2026-01-02 10:06:57] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:06:57] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:06:59] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:06:59] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:07:01] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:07:01] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:07:10] [INFO] [user] DELETE /Hello.txt [OK]
+[2026-01-02 10:07:10] [INFO] [user1] [FILE] Delete: /Hello.txt
+[2026-01-02 10:07:10] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:07:10] [INFO] [user1] [DIR] List: /

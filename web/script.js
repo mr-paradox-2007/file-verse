@@ -1,83 +1,98 @@
-// ===== STATE MANAGEMENT =====
 let currentUser = null;
 let currentPath = "/";
 let currentSessionId = null;
 let allFiles = [];
 
-// ===== API BASE =====
 const API_BASE = "http://localhost:9000";
 
-// ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     checkAuth();
 });
 
 function setupEventListeners() {
-    // Login form
     document.getElementById('loginForm').addEventListener('submit', (e) => {
         e.preventDefault();
         login();
     });
 
-    // Signup form
     document.getElementById('signupForm').addEventListener('submit', (e) => {
         e.preventDefault();
         signup();
     });
 
-    // Create file form
     document.getElementById('createFileForm').addEventListener('submit', (e) => {
         e.preventDefault();
         createFile();
     });
 
-    // Create directory form
     document.getElementById('createDirForm').addEventListener('submit', (e) => {
         e.preventDefault();
         createDirectory();
     });
 
-    // Edit file form
     document.getElementById('editFileForm').addEventListener('submit', (e) => {
         e.preventDefault();
         saveEditedFile();
     });
 
-    // Search
     document.getElementById('searchBox').addEventListener('input', (e) => {
         filterFiles(e.target.value);
     });
 }
 
-// ===== AUTHENTICATION =====
 function checkAuth() {
     const savedUser = localStorage.getItem('currentUser');
     const savedSession = localStorage.getItem('sessionId');
     
     if (savedUser && savedSession) {
-        currentUser = savedUser;
-        currentSessionId = savedSession;
-        showDashboard();
-        loadFiles();
+        verifySession(savedSession).then(valid => {
+            if (valid) {
+                currentUser = savedUser;
+                currentSessionId = savedSession;
+                showDashboard();
+                loadFiles();
+            } else {
+                clearAuth();
+                showLoginScreen();
+            }
+        });
     } else {
         showLoginScreen();
     }
 }
 
+async function verifySession(sessionId) {
+    try {
+        const response = await fetch(`${API_BASE}/user/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId })
+        });
+
+        const data = await response.json();
+        return data.success === true;
+    } catch (error) {
+        return false;
+    }
+}
+
 async function login() {
-    const username = document.getElementById('loginUsername').value;
+    const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
 
     showMessage('loginError', '', 'error', false);
     showMessage('loginSuccess', '', 'success', false);
 
+    if (!username || !password) {
+        showMessage('loginError', 'Please enter both username and password', 'error', true);
+        return;
+    }
+
     try {
         const response = await fetch(`${API_BASE}/user/login`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
 
@@ -85,67 +100,102 @@ async function login() {
 
         if (data.success) {
             currentUser = username;
-            currentSessionId = data.session_id || Math.random().toString(36).substr(2, 9);
+            currentSessionId = data.session_id;
             
             localStorage.setItem('currentUser', username);
             localStorage.setItem('sessionId', currentSessionId);
 
-            showMessage('loginSuccess', '✓ Login successful!', 'success', true);
+            showMessage('loginSuccess', 'Login successful', 'success', true);
             
             setTimeout(() => {
                 showDashboard();
                 loadFiles();
             }, 500);
         } else {
-            showMessage('loginError', '✗ ' + (data.error || 'Login failed'), 'error', true);
+            showMessage('loginError', data.message || 'Login failed', 'error', true);
         }
     } catch (error) {
         console.error('Login error:', error);
-        showMessage('loginError', '✗ Connection error', 'error', true);
+        showMessage('loginError', 'Connection error. Please check if server is running.', 'error', true);
     }
 }
 
 async function signup() {
-    const username = document.getElementById('signupUsername').value;
+    const username = document.getElementById('signupUsername').value.trim();
     const password = document.getElementById('signupPassword').value;
     const confirm = document.getElementById('signupConfirm').value;
 
     showMessage('signupError', '', 'error', false);
     showMessage('signupSuccess', '', 'success', false);
 
+    if (!username || !password || !confirm) {
+        showMessage('signupError', 'Please fill in all fields', 'error', true);
+        return;
+    }
+
+    if (username.length < 3 || username.length > 31) {
+        showMessage('signupError', 'Username must be 3-31 characters', 'error', true);
+        return;
+    }
+
+    if (password.length < 4) {
+        showMessage('signupError', 'Password must be at least 4 characters', 'error', true);
+        return;
+    }
+
     if (password !== confirm) {
-        showMessage('signupError', '✗ Passwords do not match', 'error', true);
+        showMessage('signupError', 'Passwords do not match', 'error', true);
         return;
     }
 
     try {
         const response = await fetch(`${API_BASE}/user/signup`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            showMessage('signupSuccess', '✓ Account created! Please login.', 'success', true);
+            showMessage('signupSuccess', 'Account created successfully. Please login.', 'success', true);
             document.getElementById('signupForm').reset();
             
             setTimeout(() => {
                 toggleSignup();
             }, 1500);
         } else {
-            showMessage('signupError', '✗ ' + (data.error || 'Signup failed'), 'error', true);
+            showMessage('signupError', data.message || 'Signup failed', 'error', true);
         }
     } catch (error) {
         console.error('Signup error:', error);
-        showMessage('signupError', '✗ Connection error', 'error', true);
+        showMessage('signupError', 'Connection error', 'error', true);
     }
 }
 
-function logout() {
+async function logout() {
+    if (!currentSessionId) {
+        clearAuth();
+        showLoginScreen();
+        return;
+    }
+
+    try {
+        await fetch(`${API_BASE}/user/logout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: currentSessionId })
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+    
+    clearAuth();
+    showLoginScreen();
+    document.getElementById('loginForm').reset();
+}
+
+function clearAuth() {
     currentUser = null;
     currentSessionId = null;
     currentPath = "/";
@@ -153,16 +203,20 @@ function logout() {
     
     localStorage.removeItem('currentUser');
     localStorage.removeItem('sessionId');
-    
-    showLoginScreen();
-    document.getElementById('loginForm').reset();
 }
 
-// ===== UI NAVIGATION =====
 function toggleSignup() {
-    document.getElementById('loginScreen').classList.toggle('show');
-    document.getElementById('signupScreen').classList.toggle('show');
+    document.getElementById('loginScreen').style.display = 
+        document.getElementById('loginScreen').style.display === 'none' ? 'flex' : 'none';
+    document.getElementById('signupScreen').style.display = 
+        document.getElementById('signupScreen').style.display === 'none' ? 'flex' : 'none';
+    
+    document.getElementById('loginForm').reset();
     document.getElementById('signupForm').reset();
+    showMessage('loginError', '', 'error', false);
+    showMessage('loginSuccess', '', 'success', false);
+    showMessage('signupError', '', 'error', false);
+    showMessage('signupSuccess', '', 'success', false);
 }
 
 function showLoginScreen() {
@@ -176,7 +230,6 @@ function showDashboard() {
     document.getElementById('signupScreen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'flex';
     
-    // Update user info
     document.getElementById('userInfo').textContent = `Logged in as: ${currentUser}`;
 }
 
@@ -190,7 +243,10 @@ function updateBreadcrumb() {
     const breadcrumb = document.getElementById('breadcrumb');
     breadcrumb.innerHTML = '<span class="breadcrumb-item active" onclick="navigateTo(\'/\')">Root</span>';
     
-    if (currentPath === '/') return;
+    if (currentPath === '/') {
+        document.getElementById('currentPath').textContent = '/';
+        return;
+    }
     
     let path = '';
     const parts = currentPath.split('/').filter(p => p);
@@ -198,16 +254,22 @@ function updateBreadcrumb() {
     parts.forEach((part, index) => {
         path += '/' + part;
         const fullPath = path;
-        breadcrumb.innerHTML += `<span class="breadcrumb-item" onclick="navigateTo('${fullPath}')">${part}</span>`;
+        const isLast = index === parts.length - 1;
+        const className = isLast ? 'breadcrumb-item active' : 'breadcrumb-item';
+        breadcrumb.innerHTML += `<span class="${className}" onclick="navigateTo('${fullPath}')">${part}</span>`;
     });
     
     document.getElementById('currentPath').textContent = currentPath;
 }
 
-// ===== FILE OPERATIONS =====
 async function loadFiles() {
     const fileList = document.getElementById('fileList');
     fileList.innerHTML = '<div class="loading">Loading files...</div>';
+
+    if (!currentSessionId) {
+        fileList.innerHTML = '<div class="empty-state">Session expired. Please login again.</div>';
+        return;
+    }
 
     try {
         const response = await fetch(`${API_BASE}/file/list`, {
@@ -225,8 +287,12 @@ async function loadFiles() {
             allFiles = data.files;
             displayFiles(data.files);
             document.getElementById('fileCount').textContent = data.files.length;
+        } else if (!data.success && data.message === 'Invalid session') {
+            clearAuth();
+            showLoginScreen();
+            showToast('Session expired. Please login again.', 'error');
         } else {
-            fileList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📁</div>No files in this directory</div>';
+            fileList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">Empty</div>No files in this directory</div>';
         }
     } catch (error) {
         console.error('Load files error:', error);
@@ -239,7 +305,7 @@ function displayFiles(files) {
     fileList.innerHTML = '';
 
     if (files.length === 0) {
-        fileList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📁</div>No files in this directory</div>';
+        fileList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">Empty</div>No files in this directory</div>';
         return;
     }
 
@@ -248,7 +314,7 @@ function displayFiles(files) {
         fileItem.className = 'file-item';
         fileItem.onclick = () => openFile(file);
 
-        const icon = file.type === 'directory' ? '📁' : '📄';
+        const icon = file.type === 'directory' ? '[DIR]' : '[FILE]';
         const size = file.type === 'directory' ? '' : `${formatSize(file.size)}`;
 
         fileItem.innerHTML = `
@@ -303,10 +369,11 @@ async function viewFile(file) {
             const previewArea = document.getElementById('previewArea');
             previewArea.textContent = data.content || '(Empty file)';
             
-            // Store current file for editing
             window.currentFile = file;
             
             document.getElementById('filePreview').style.display = 'block';
+        } else {
+            showToast('Error viewing file', 'error');
         }
     } catch (error) {
         console.error('View file error:', error);
@@ -319,7 +386,6 @@ function closePreview() {
     window.currentFile = null;
 }
 
-// ===== CREATE OPERATIONS =====
 function showCreateFileModal() {
     document.getElementById('createFileModal').classList.add('show');
 }
@@ -329,8 +395,13 @@ function showCreateDirModal() {
 }
 
 async function createFile() {
-    const filename = document.getElementById('newFilename').value;
+    const filename = document.getElementById('newFilename').value.trim();
     const content = document.getElementById('fileContent').value;
+
+    if (!filename) {
+        showToast('Please enter a filename', 'error');
+        return;
+    }
 
     const filePath = currentPath === '/' ? '/' + filename : currentPath + '/' + filename;
 
@@ -348,12 +419,12 @@ async function createFile() {
         const data = await response.json();
 
         if (data.success) {
-            showToast('✓ File created successfully', 'success');
+            showToast('File created successfully', 'success');
             closeModal('createFileModal');
             document.getElementById('createFileForm').reset();
             loadFiles();
         } else {
-            showToast('✗ Error creating file', 'error');
+            showToast(data.message || 'Error creating file', 'error');
         }
     } catch (error) {
         console.error('Create file error:', error);
@@ -362,7 +433,13 @@ async function createFile() {
 }
 
 async function createDirectory() {
-    const dirname = document.getElementById('newDirname').value;
+    const dirname = document.getElementById('newDirname').value.trim();
+
+    if (!dirname) {
+        showToast('Please enter a folder name', 'error');
+        return;
+    }
+
     const dirPath = currentPath === '/' ? '/' + dirname : currentPath + '/' + dirname;
 
     try {
@@ -378,12 +455,12 @@ async function createDirectory() {
         const data = await response.json();
 
         if (data.success) {
-            showToast('✓ Folder created successfully', 'success');
+            showToast('Folder created successfully', 'success');
             closeModal('createDirModal');
             document.getElementById('createDirForm').reset();
             loadFiles();
         } else {
-            showToast('✗ Error creating folder', 'error');
+            showToast(data.message || 'Error creating folder', 'error');
         }
     } catch (error) {
         console.error('Create directory error:', error);
@@ -391,7 +468,6 @@ async function createDirectory() {
     }
 }
 
-// ===== EDIT OPERATIONS =====
 function editFile() {
     if (!window.currentFile) return;
     
@@ -421,12 +497,12 @@ async function saveEditedFile() {
         const data = await response.json();
 
         if (data.success) {
-            showToast('✓ File updated successfully', 'success');
+            showToast('File updated successfully', 'success');
             closeModal('editFileModal');
             loadFiles();
             window.currentFile = null;
         } else {
-            showToast('✗ Error updating file', 'error');
+            showToast(data.message || 'Error updating file', 'error');
         }
     } catch (error) {
         console.error('Edit file error:', error);
@@ -437,7 +513,7 @@ async function saveEditedFile() {
 async function deleteCurrentFile() {
     if (!window.currentFile) return;
 
-    if (!confirm('Are you sure you want to delete this file?')) return;
+    if (!confirm(`Are you sure you want to delete "${window.currentFile.name}"?`)) return;
 
     try {
         const response = await fetch(`${API_BASE}/file/delete`, {
@@ -452,11 +528,11 @@ async function deleteCurrentFile() {
         const data = await response.json();
 
         if (data.success) {
-            showToast('✓ File deleted successfully', 'success');
+            showToast('File deleted successfully', 'success');
             closePreview();
             loadFiles();
         } else {
-            showToast('✗ Error deleting file', 'error');
+            showToast(data.message || 'Error deleting file', 'error');
         }
     } catch (error) {
         console.error('Delete file error:', error);
@@ -464,7 +540,6 @@ async function deleteCurrentFile() {
     }
 }
 
-// ===== MODALS =====
 function closeModal(modalId) {
     document.getElementById(modalId).classList.remove('show');
 }
@@ -477,7 +552,6 @@ document.querySelectorAll('.modal').forEach(modal => {
     });
 });
 
-// ===== UTILITY FUNCTIONS =====
 function showMessage(elementId, message, type, show) {
     const element = document.getElementById(elementId);
     if (show) {
