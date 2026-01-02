@@ -1,130 +1,17 @@
-# ============================================================================
-# OMNI FILE SYSTEM (OFS) - DEFAULT CONFIGURATION
-# ============================================================================
-# This configuration file defines all parameters for the OFS container (.omni)
-# file format, security settings, and network server configuration.
-#
-# File Format: INI-style with [section] headers and key = value pairs
-# Comments: Lines starting with # or ;
-# Strings: Use double quotes for values with spaces
-# ============================================================================
-
 [filesystem]
-# ========================================================================
-# FILESYSTEM CONFIGURATION
-# ========================================================================
-
-# Total size of the filesystem container in bytes
-# This is the maximum amount of data that can be stored
-# Default: 104857600 (100MB)
-# Range: 1048576 to 1099511627776 (1MB to 1TB)
 total_size = 104857600
-
-# Header size in bytes
-# Must match the size of OMNIHeader structure (currently 512 bytes)
-# DO NOT MODIFY unless you change the OMNIHeader definition
-# Default: 512
 header_size = 512
-
-# Block size in bytes
-# Size of each data block in the content area
-# MUST BE a power of 2: 512, 1024, 2048, 4096, 8192, 16384, etc.
-# Smaller blocks = more metadata overhead, better for small files
-# Larger blocks = less overhead, better for large files, more wasted space
-# Default: 4096 (4KB) - Good balance for general use
-# Range: 512 to 1048576 (512 bytes to 1MB)
 block_size = 4096
-
-# Maximum number of files/directories in the filesystem
-# This limits the total entries in the metadata index area
-# Default: 1000
-# Range: 1 to 1000000
 max_files = 1000
-
-# Maximum filename length (excluding null terminator)
-# Files/directories with names longer than this will be truncated or rejected
-# Default: 10 (matches UNIX ext2 convention)
-# Range: 1 to 255
-max_filename_length = 10
+max_filename_length = 256
 
 [security]
-# ========================================================================
-# SECURITY CONFIGURATION
-# ========================================================================
-
-# Maximum number of simultaneous users
-# Determines size of user table in the filesystem
-# Default: 50
-# Range: 1 to 1000
 max_users = 50
-
-# Default admin username
-# Used to create the initial administrator account on fs_format()
-# Default: admin
-admin_username = "admin"
-
-# Default admin password
-# WARNING: This is stored as plaintext in the header (Phase 1 limitation)
-# In production, should be hashed and salted
-# Default: admin123
-admin_password = "admin123"
-
-# Require authentication for all operations
-# If true: all operations must include valid session credentials
-# If false: operations allowed without authentication (security risk!)
-# Default: true
+admin_username = admin
+admin_password = admin123
 require_auth = true
 
-# Private key for secure operations
-# Used to verify and encrypt sensitive operations
-# Must be provided by clients in the "private_key" field of requests
-# If a request has an incorrect key, system becomes "silent" (stealth mode)
-# Default: OFS_PRIVATE_KEY_123
-private_key = "OFS_PRIVATE_KEY_123"
-
 [server]
-# ========================================================================
-# NETWORK SERVER CONFIGURATION
-# ========================================================================
-
-# Server listening port
-# The port on which the OFS server listens for client connections
-# Default: 8080
-# Range: 1 to 65535
-# Note: Ports < 1024 require root/administrator privileges on Linux/macOS
-port = 8080
-
-# Maximum simultaneous client connections
-# Limits how many clients can connect at the same time
-# Excess connections will be queued
-# Default: 20
-# Range: 1 to 10000
+port = 9000
 max_connections = 20
-
-# Queue timeout in seconds
-# Maximum time a client request can wait in the queue before being rejected
-# Default: 30 (seconds)
-# Range: 1 to 3600
 queue_timeout = 30
-
-# ============================================================================
-# CALCULATED VALUES (for reference, do not modify)
-# ============================================================================
-# These values are calculated from the above settings:
-#
-# Available space for data:
-#   usable_space = total_size - header_size - (max_users * 256 bytes per user)
-#   usable_space = 104857600 - 512 - (50 * 256)
-#   usable_space = 104857600 - 512 - 12800 = 104844288 bytes
-#
-# Maximum number of blocks:
-#   max_blocks = usable_space / block_size
-#   max_blocks = 104844288 / 4096 = 25601 blocks
-#
-# Maximum file size (with linked block allocation):
-#   theoretical_max = (max_blocks - 1) * (block_size - 4) bytes
-#   = 25600 * 4092 = 104755200 bytes (≈ 99.9 MB)
-#
-# ============================================================================
-
-# End of configuration file

@@ -1,0 +1,729 @@
+================================================================================
+                 OFS - OMNI FILE SYSTEM (Phase 1)
+                    Complete Setup & User Guide
+================================================================================
+
+TABLE OF CONTENTS:
+1. Quick Start
+2. Features
+3. Building the System
+4. Running the Server
+5. Accessing the Web UI
+6. User Management
+7. File Operations
+8. Encryption Settings
+9. Troubleshooting
+10. System Architecture
+
+================================================================================
+1. QUICK START
+================================================================================
+
+For the impatient:
+
+  $ cd working-file-verse
+  $ ./build.sh
+  $ ./compiled/server
+  
+Then open http://localhost:9000 in your browser and login with:
+  - Username: admin
+  - Password: admin123
+
+
+================================================================================
+2. FEATURES
+================================================================================
+
+✅ Multi-User System
+   - Create multiple user accounts
+   - Each user has separate file storage
+   - Admin user (admin/admin123) created by default
+   - One session per user (no duplicate logins)
+
+✅ File Management
+   - Create files with content
+   - Read/view file contents
+   - Edit existing files
+   - Delete files
+   - Organize files in directories
+   - Search files by name
+
+✅ Data Security
+   - Passwords hashed with salt (unique per user)
+   - File content encrypted with Caesar cipher
+   - Session-based authentication
+   - Path traversal protection
+
+✅ Web-Based Interface
+   - Modern, responsive design
+   - Works on desktop and mobile
+   - Real-time file browsing
+   - Intuitive file operations
+   - Search and sort functionality
+
+✅ Logging
+   - All operations logged to logs/ofs.log
+   - User login/logout tracking
+   - File operation history
+   - Error tracking
+
+
+================================================================================
+3. BUILDING THE SYSTEM
+================================================================================
+
+Prerequisites:
+  - Linux/Unix system (Ubuntu/Debian tested)
+  - g++ compiler (C++17 support)
+  - pthreads library (usually pre-installed)
+  - Make sure you're in the working-file-verse directory
+
+Build Steps:
+
+  1. Navigate to project:
+     $ cd /path/to/working-file-verse
+
+  2. Run build script:
+     $ chmod +x build.sh
+     $ ./build.sh
+
+  3. Expected output:
+     [✓] Build successful!
+     [✓] Binary: ./compiled/server
+     [*] Run with: ./compiled/server
+
+  4. Binary location:
+     ./compiled/server (2.8 MB executable)
+
+If build fails:
+  - Check g++ is installed: $ g++ --version
+  - Check pthreads: $ ldconfig -p | grep pthread
+  - Check all source files exist in src/ directory
+
+
+================================================================================
+4. RUNNING THE SERVER
+================================================================================
+
+Basic Start:
+
+  $ ./compiled/server
+
+Expected Output:
+  [*] Initializing filesystem...
+  [*] Logger init...
+  [*] Crypto init...
+  [*] Creating instance...
+  [*] Loading users...
+  [*] Creating socket...
+  [*] Binding to port 9000...
+  [✓] Server started on port 9000
+  [✓] Listening for connections...
+
+The server is now running on http://localhost:9000
+
+To stop the server:
+  - Press Ctrl+C in the terminal
+  - Server will gracefully shutdown
+
+Port Configuration:
+  - Default port: 9000 (hardcoded in server_main.cpp)
+  - To change: Edit src/network/server_main.cpp line with "htons(9000)"
+  - Rebuild after changes: ./build.sh
+
+Running in Background:
+  $ ./compiled/server &
+  $ jobs
+  $ kill %1    # To stop
+
+Running with Logging:
+  $ ./compiled/server > server.log 2>&1 &
+  $ tail -f server.log
+
+
+================================================================================
+5. ACCESSING THE WEB UI
+================================================================================
+
+Once server is running:
+
+  1. Open web browser
+  2. Go to: http://localhost:9000
+  3. You should see the OFS login page
+
+If page doesn't load:
+  - Check server is running (you should see console output)
+  - Try refreshing browser (Ctrl+F5 for hard refresh)
+  - Check localhost:9000 (not 127.0.0.1:9000)
+  - Check firewall isn't blocking port 9000
+
+Browser Support:
+  - Chrome/Chromium ✓
+  - Firefox ✓
+  - Safari ✓
+  - Edge ✓
+  - Mobile browsers ✓
+
+
+================================================================================
+6. USER MANAGEMENT
+================================================================================
+
+Default Admin Account:
+  - Username: admin
+  - Password: admin123
+  - This account is created automatically on first run
+  - Use this to create other users
+
+Logging In:
+  
+  1. Enter username (e.g., "john")
+  2. Enter password
+  3. Click "Login"
+  4. On success, you see dashboard with file browser
+  5. On failure, error message appears
+  6. Session ID is stored in browser (localStorage)
+
+Creating New Account:
+
+  1. On login screen, click "Create Account"
+  2. Enter desired username (3-32 characters)
+  3. Enter password (4+ characters)
+  4. Confirm password
+  5. Click "Create Account"
+  6. On success, redirected to login screen
+  7. Login with new credentials
+
+Session Management:
+  
+  - Each user can have only ONE active session
+  - If you try to login twice with same account: ERROR "Already logged in"
+  - Must logout first before logging in again
+  - Click "Logout" button to end session
+  - Closing browser also ends session (after session timeout)
+
+Security Notes:
+
+  - Passwords are hashed with SHA1-like algorithm + per-user salt
+  - Never stored in plain text
+  - Session IDs are random and time-based
+  - Each user's files are isolated
+
+
+================================================================================
+7. FILE OPERATIONS
+================================================================================
+
+Creating Files:
+
+  1. Click "📄 New File" button (left sidebar)
+  2. Enter filename (e.g., "document.txt")
+  3. Enter file content
+  4. Click "Create"
+  5. File appears in file browser
+  6. Success message shown
+
+Viewing Files:
+
+  1. Browse to file in file browser
+  2. Click on file to open it
+  3. Content displayed in preview panel
+  4. Click "✏️ Edit" to edit
+  5. Click "🗑️ Delete" to remove
+
+Editing Files:
+
+  1. Click on file to view
+  2. Click "✏️ Edit" button
+  3. Modify content in text area
+  4. Click "Save Changes"
+  5. Success message shown
+
+Deleting Files:
+
+  1. Click on file
+  2. Click "🗑️ Delete" button
+  3. Confirm deletion dialog
+  4. File is removed
+  5. Returned to file browser
+
+Creating Directories:
+
+  1. Click "📁 New Folder" button (left sidebar)
+  2. Enter folder name (e.g., "documents")
+  3. Click "Create"
+  4. Folder appears in browser
+  5. Click folder to navigate into it
+
+Navigating Directories:
+
+  1. Click on folder in file browser to enter
+  2. Breadcrumb at top shows current path
+  3. Click path in breadcrumb to go back
+  4. "Root" button returns to top directory
+
+Searching Files:
+
+  1. Use search box at top
+  2. Type filename or part of name
+  3. Results filter in real-time
+  4. Click to view any result
+
+Sorting Files:
+
+  1. Use "Sort by" dropdown (top right)
+  2. Options: Name, Date, Type
+  3. Click to change sort order
+  4. File list reorders automatically
+
+File Limitations:
+
+  - Maximum file size: 64 KB per operation (hardcoded buffer)
+  - Maximum path length: 512 characters
+  - Maximum files in memory: configurable (default 1000)
+  - No duplicate filenames in same directory
+
+
+================================================================================
+8. ENCRYPTION SETTINGS
+================================================================================
+
+Current Encryption Method:
+
+  The system uses a SIMPLE CAESAR CIPHER for file encryption.
+  This is editable and customizable for educational purposes.
+
+How It Works:
+
+  - Each file content is encrypted using a shift cipher
+  - Encryption key is configurable
+  - Same key used for all files
+  - Passwords are hashed, not encrypted
+
+Changing Encryption Key:
+
+  1. Edit: src/utils/crypto.cpp
+  2. Find line: int Crypto::encryption_shift = 7;
+  3. Change "7" to any number 1-25
+  4. Rebuild: ./build.sh
+  5. Restart server: ./compiled/server
+
+Example: Change to shift of 13 (ROT13):
+  
+  OLD: int Crypto::encryption_shift = 7;
+  NEW: int Crypto::encryption_shift = 13;
+
+Note on Encryption:
+
+  - This is a SIMPLE cipher for educational purposes
+  - NOT suitable for real sensitive data
+  - Production systems should use AES encryption
+  - The shift value is shared across all users
+  - Changing shift will NOT decrypt previously encrypted files
+
+Viewing Encrypted Content:
+
+  - Files appear encrypted in storage (/data directory)
+  - Web UI automatically decrypts before display
+  - Users don't see encryption - it's transparent
+
+Encryption Configuration File:
+
+  Location: default.uconf
+  Section: [security]
+  
+  Can be extended to store encryption settings:
+  [security]
+  encryption_shift = 7
+  encryption_enabled = true
+
+
+================================================================================
+9. TROUBLESHOOTING
+================================================================================
+
+Problem: Port 9000 already in use
+
+  Solution 1: Stop other service using port 9000
+             $ lsof -i :9000
+             $ kill -9 <PID>
+  
+  Solution 2: Change server port
+             Edit src/network/server_main.cpp
+             Change: htons(9000)
+             To:     htons(8000)  # or any free port
+             Rebuild: ./build.sh
+             Access: http://localhost:8000
+
+
+Problem: Login fails / Authentication error
+
+  Solution: Make sure admin account exists
+           Kill server (Ctrl+C)
+           Delete data/users.json if it exists (to reset admin)
+           Restart server
+           Login with admin/admin123
+
+
+Problem: Web page not loading / Blank page
+
+  Solution 1: Check browser console (F12 > Console tab)
+              Look for connection errors
+  
+  Solution 2: Clear browser cache
+              Ctrl+Shift+Delete (most browsers)
+              Hard refresh: Ctrl+Shift+R
+  
+  Solution 3: Check server logs
+              $ tail -50 logs/ofs.log
+
+
+Problem: Files not persisting / Lost after restart
+
+  Note: Current version stores files in MEMORY only
+        They are NOT saved to disk
+        Restarting server = all files lost
+        This is by design for Phase 1
+        Phase 2 will implement disk persistence
+
+
+Problem: "File created successfully" but can't see file
+
+  Reason: File browser may need refresh
+  Solution: Click on different folder, then back
+            Or refresh browser (F5)
+
+
+Problem: Can't create account / Username exists
+
+  Solution: Username already taken
+           Try different username
+           Usernames are case-sensitive
+
+
+Problem: Session error / Already logged in
+
+  Reason: Same user logged in from multiple devices/tabs
+  Solution: Logout from other location first
+           Or restart server to reset sessions
+
+
+Problem: Build fails / Compilation errors
+
+  Solution 1: Check compiler version
+             $ g++ --version
+             Need: g++9 or later (C++17 support)
+  
+  Solution 2: Clean build
+             $ rm compiled/server
+             $ ./build.sh
+  
+  Solution 3: Check all files exist
+             $ ls -la src/core/*.cpp src/network/*.cpp src/utils/*.cpp
+             Should show 10 files
+
+
+Problem: Server crashes/exits immediately
+
+  Solution: Check logs
+           $ cat logs/ofs.log
+           Look for error messages
+  
+  Common causes:
+           - Socket binding failed (port in use)
+           - Logger initialization failed
+           - Crypto initialization failed
+           - Filesystem init failed
+
+
+Getting More Help:
+
+  1. Check logs: logs/ofs.log (all operations logged)
+  2. Check server console output
+  3. Check browser console (F12)
+  4. Review configuration: default.uconf
+
+
+================================================================================
+10. SYSTEM ARCHITECTURE
+================================================================================
+
+File Structure:
+
+  working-file-verse/
+  ├── build.sh                  # Build script
+  ├── default.uconf             # Configuration file
+  ├── README_PHASE1.md         # Phase 1 documentation
+  ├── compiled/
+  │   └── server               # Compiled binary (2.8 MB)
+  ├── logs/
+  │   └── ofs.log              # Operation log
+  ├── data/                    # Runtime data
+  ├── web/                     # Web UI files
+  │   ├── index.html           # Main web page
+  │   ├── style.css            # Styling
+  │   └── script.js            # Frontend logic
+  └── src/
+      ├── core/                # Core modules
+      │   ├── crypto.cpp       # Encryption (editable!)
+      │   ├── file_ops.cpp     # File operations
+      │   ├── path_resolver.cpp
+      │   ├── fs_init.cpp
+      │   └── user_manager.cpp
+      ├── network/
+      │   ├── server_main.cpp  # HTTP server
+      │   └── fifo_queue.cpp
+      └── utils/
+          ├── logger.cpp
+          └── config_parser.cpp
+
+Key Components:
+
+  1. HTTP Server (server_main.cpp)
+     - Listens on port 9000
+     - Serves static HTML/CSS/JS files
+     - Routes API requests to handlers
+     - Supports CORS for cross-origin requests
+
+  2. User Manager (user_manager.cpp)
+     - Handles authentication
+     - Manages user sessions
+     - One session per user enforcement
+     - Password verification with salt
+
+  3. File Operations (file_ops.cpp)
+     - Create, read, edit, delete files
+     - Create, list, delete directories
+     - In-memory file storage
+     - Path validation and security
+
+  4. Crypto (crypto.cpp)
+     - Password hashing with salt
+     - File content encryption (Caesar cipher)
+     - Configurable encryption shift
+     - Random salt generation
+
+  5. Logger (logger.cpp)
+     - Thread-safe logging
+     - File-based log storage
+     - Timestamp tracking
+     - Multiple log levels
+
+  6. Web UI (index.html, style.css, script.js)
+     - Modern responsive design
+     - Login/signup screens
+     - File browser interface
+     - File create/edit/delete dialogs
+     - Real-time search and filtering
+
+Data Flow:
+
+  User Browser
+      |
+      | HTTP Request
+      v
+  HTTP Server (server_main.cpp)
+      |
+      +----> GET /web/* -------> Serve static files
+      |
+      +----> POST /user/login ---> User Manager
+      |                               |
+      |                               v
+      |                           Authenticate
+      |                               |
+      |                               v
+      |                           Return session
+      |
+      +----> POST /file/* -------> File Operations
+      |                               |
+      |                               v
+      |                           Crypto module (encode/decode)
+      |                               |
+      |                               v
+      |                           File stored/retrieved
+      |
+      v
+  JSON Response -> Browser -> Update UI
+
+Current Limitations:
+
+  ✗ Files stored in memory only (not persisted to disk)
+  ✗ No file versioning yet (Phase 2 feature)
+  ✗ Simple Caesar cipher (not production-grade)
+  ✗ Single-process server (no clustering)
+  ✗ No quota per user
+  ✗ No file permissions (just owner)
+
+Future Enhancements (Phase 2):
+
+  ✓ Disk persistence (.omni file format)
+  ✓ File versioning and delta storage
+  ✓ File history and rollback
+  ✓ Advanced permissions (ACL)
+  ✓ Audit logging with user tracking
+  ✓ Encryption key per user
+  ✓ Replication support
+
+
+================================================================================
+QUICK REFERENCE COMMANDS
+================================================================================
+
+Build & Run:
+  $ cd working-file-verse
+  $ ./build.sh
+  $ ./compiled/server
+
+Clean build:
+  $ rm compiled/server
+  $ ./build.sh
+
+View logs:
+  $ tail -f logs/ofs.log
+  $ grep "ERROR" logs/ofs.log
+
+Check port usage:
+  $ lsof -i :9000
+
+Access server:
+  http://localhost:9000
+
+Default credentials:
+  Username: admin
+  Password: admin123
+
+Configuration:
+  Edit: default.uconf
+  Edit: src/utils/crypto.cpp (for encryption shift)
+
+Rebuild after code changes:
+  $ ./build.sh
+  $ ./compiled/server
+
+
+================================================================================
+EXAMPLE WORKFLOW
+================================================================================
+
+Complete workflow from startup to file operations:
+
+1. Start Server:
+   $ ./build.sh
+   $ ./compiled/server
+   
+   [Output:]
+   [✓] Server started on port 9000
+
+2. Open Browser:
+   http://localhost:9000
+   
+   [You see: OFS Login screen]
+
+3. Login:
+   - Username: admin
+   - Password: admin123
+   - Click "Login"
+   
+   [You see: File Browser Dashboard]
+
+4. Create File:
+   - Click "📄 New File"
+   - Filename: "hello.txt"
+   - Content: "Hello World!"
+   - Click "Create"
+   
+   [You see: File appears in browser]
+
+5. View File:
+   - Click on "hello.txt"
+   - Content displayed: "Hello World!"
+   
+   [You see: File preview panel]
+
+6. Edit File:
+   - Click "✏️ Edit"
+   - Change content: "Hello OFS!"
+   - Click "Save Changes"
+   
+   [You see: Updated success message]
+
+7. Create Folder:
+   - Click "📁 New Folder"
+   - Name: "documents"
+   - Click "Create"
+   
+   [You see: Folder in browser]
+
+8. Navigate:
+   - Click "documents" folder
+   - Click "Create" in that directory
+   
+   [You see: Breadcrumb updates]
+
+9. Create New User:
+   - Click "Logout"
+   - Click "Create Account"
+   - Username: "john"
+   - Password: "password123"
+   - Click "Create Account"
+   
+   [You see: Account created message]
+
+10. Login as new user:
+    - Username: john
+    - Password: password123
+    - Click "Login"
+    
+    [You see: Empty file browser (john's files)]
+
+11. Logout:
+    - Click "Logout" button
+    
+    [You see: Login screen again]
+
+
+================================================================================
+SUPPORT & DOCUMENTATION
+================================================================================
+
+Documentation Files:
+  - README_PHASE1.md         : Detailed feature documentation
+  - INSTRUCTIONS.txt         : This file
+  - logs/ofs.log            : Runtime operations log
+  - default.uconf           : Configuration template
+
+Source Code Comments:
+  - All .cpp and .hpp files have inline comments
+  - Key functions documented
+  - Review file_ops.cpp for file operations reference
+
+Debug Mode:
+  - Uncomment debug lines in server_main.cpp
+  - Recompile and rerun
+  - Server will print more diagnostic info
+
+For Issues:
+  1. Check logs/ofs.log
+  2. Review server console output
+  3. Check browser console (F12 > Console)
+  4. Try clean rebuild: rm compiled/server && ./build.sh
+  5. Make sure all source files exist
+
+
+================================================================================
+END OF INSTRUCTIONS
+================================================================================
+
+Your OFS System is ready to use!
+
+Start with: ./compiled/server
+Access with: http://localhost:9000
+Login with: admin / admin123
+
+Enjoy managing your files!
+
+================================================================================
+Version: Phase 1.0
+Last Updated: January 2, 2026
+Status: ✅ READY FOR USE
+================================================================================

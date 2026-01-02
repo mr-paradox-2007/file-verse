@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OFS - Omni File System</title>
+    <link rel="stylesheet" href="/web/style.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen">
+        <div class="login-container">
+            <div class="login-box">
+                <h1>🔐 OFS - Omni File System</h1>
+                <p class="subtitle">Multi-User Encrypted File Management</p>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="loginUsername" placeholder="Enter username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="Enter password" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Login</button>
+                    <button type="button" class="btn-secondary" onclick="toggleSignup()">Create Account</button>
+                </form>
+
+                <div id="loginError" class="error-message" style="display:none;"></div>
+                <div id="loginSuccess" class="success-message" style="display:none;"></div>
+                <p class="hint">Demo: admin / admin123</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signup Screen -->
+    <div id="signupScreen" class="screen" style="display:none;">
+        <div class="login-container">
+            <div class="login-box">
+                <h1>📝 Create New Account</h1>
+
+                <form id="signupForm">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="signupUsername" placeholder="Choose username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="signupPassword" placeholder="Enter password" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="signupConfirm" placeholder="Confirm password" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Create Account</button>
+                    <button type="button" class="btn-secondary" onclick="toggleSignup()">Back to Login</button>
+                </form>
+
+                <div id="signupError" class="error-message" style="display:none;"></div>
+                <div id="signupSuccess" class="success-message" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="screen" style="display:none;">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-left">
+                <h1>📁 OFS Dashboard</h1>
+                <span class="user-info" id="userInfo"></span>
+            </div>
+            <div class="nav-right">
+                <span class="encryption-status">🔒 Encrypted</span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>📂 Navigation</h3>
+                    <div class="breadcrumb" id="breadcrumb">
+                        <span class="breadcrumb-item active" onclick="navigateTo('/')">Root</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>🆕 Quick Actions</h3>
+                    <button class="btn-action" onclick="showCreateFileModal()">📄 New File</button>
+                    <button class="btn-action" onclick="showCreateDirModal()">📁 New Folder</button>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>ℹ️ System Info</h3>
+                    <div class="info-item">
+                        <label>Current Path:</label>
+                        <span id="currentPath">/</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Total Files:</label>
+                        <span id="fileCount">0</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- File Browser -->
+                <section class="file-browser">
+                    <div class="browser-header">
+                        <h2>📂 File Browser</h2>
+                        <div class="browser-controls">
+                            <input type="text" id="searchBox" placeholder="🔍 Search files..." class="search-box">
+                            <select id="sortBy" class="sort-select" onchange="loadFiles()">
+                                <option value="name">Sort by Name</option>
+                                <option value="date">Sort by Date</option>
+                                <option value="type">Sort by Type</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="fileList" class="file-list">
+                        <!-- Files will be loaded here -->
+                        <div class="loading">Loading files...</div>
+                    </div>
+                </section>
+
+                <!-- File Preview -->
+                <section id="filePreview" class="file-preview" style="display:none;">
+                    <div class="preview-header">
+                        <h3 id="previewTitle"></h3>
+                        <button class="btn-close" onclick="closePreview()">✕</button>
+                    </div>
+                    <div class="preview-content">
+                        <div id="previewArea" class="preview-area"></div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn-secondary" onclick="editFile()">✏️ Edit</button>
+                        <button class="btn-danger" onclick="deleteCurrentFile()">🗑️ Delete</button>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Create File Modal -->
+    <div id="createFileModal" class="modal">
+        <div class="modal-content">
+            <h2>📄 Create New File</h2>
+            <form id="createFileForm">
+                <div class="form-group">
+                    <label>Filename</label>
+                    <input type="text" id="newFilename" placeholder="Enter filename" required>
+                </div>
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea id="fileContent" placeholder="Enter file content" rows="5"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Create</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('createFileModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Directory Modal -->
+    <div id="createDirModal" class="modal">
+        <div class="modal-content">
+            <h2>📁 Create New Folder</h2>
+            <form id="createDirForm">
+                <div class="form-group">
+                    <label>Folder Name</label>
+                    <input type="text" id="newDirname" placeholder="Enter folder name" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Create</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('createDirModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit File Modal -->
+    <div id="editFileModal" class="modal">
+        <div class="modal-content">
+            <h2>✏️ Edit File</h2>
+            <form id="editFileForm">
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea id="editFileContent" placeholder="Enter file content" rows="8"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('editFileModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Message Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="/web/script.js"></script>
+</body>
+
+</html>

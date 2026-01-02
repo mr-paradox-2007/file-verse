@@ -1,43 +1,30 @@
-[2026-01-01T07:49:38Z] level=INFO module=CONFIG code=0 msg="Attempting to parse configuration from: default.uconf" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/config_parser.cpp" line=49
-[2026-01-01T07:49:38Z] level=INFO module=CONFIG code=0 msg="Loading default configuration values" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/config_parser.cpp" line=113
-[2026-01-01T07:49:38Z] level=DEBUG module=CONFIG code=0 msg="Found section: [filesystem]" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/config_parser.cpp" line=84
-[2026-01-01T07:49:38Z] level=DEBUG module=CONFIG code=0 msg="Found section: [security]" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/config_parser.cpp" line=84
-[2026-01-01T07:49:38Z] level=DEBUG module=CONFIG code=0 msg="Found section: [server]" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/config_parser.cpp" line=84
-[2026-01-01T07:49:38Z] level=INFO module=CONFIG code=0 msg="Configuration validation passed" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/config_parser.cpp" line=232
-[2026-01-01T07:49:38Z] level=INFO module=CONFIG code=0 msg="Configuration successfully parsed and validated." file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/config_parser.cpp" line=107
-[2026-01-01T07:49:38Z] level=INFO module=FS_FORMAT code=0 msg="Starting filesystem format: data/test.omni" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=58
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=1 msg="OMNIHeader initialized: magic=OMNIFS0, version=0x65536, total_size=104857600, block_size=4096" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=101
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=2 msg="User table created with admin user: admin" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=138
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=3 msg="Root directory entry created with inode=1" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=162
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=4 msg="Writing OMNIHeader to file" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=177
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=5 msg="Writing user table to file" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=189
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=6 msg="Writing root directory entry to file" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=204
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=7 msg="Writing metadata area padding: 383616 bytes" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=222
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=8 msg="Writing free space tracking area padding: 65536 bytes" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=254
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_FORMAT code=9 msg="Writing content block area padding" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=268
-[2026-01-01T07:49:38Z] level=INFO module=FS_FORMAT code=0 msg="Filesystem format completed successfully: data/test.omni (size=104857600 bytes)" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=294
-[2026-01-01T07:49:38Z] level=INFO module=FS_FORMAT code=10 msg="File system structure:
-  Header: 512 bytes (offset 0x0)
-  User Table: 10400 bytes (offset 0x504)
-  Metadata Area: 384000 bytes
-  Free Space Tracking: 65536 bytes
-  Content Blocks: 104397160 bytes
-  Total: 104857600 bytes" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_format.cpp" line=302
-[2026-01-01T07:49:38Z] level=INFO module=FS_INIT code=0 msg="Initializing file system from: data/test.omni" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=26
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_INIT code=0 msg="Header loaded: version=65536, total_size=104857600, block_size=4096" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=91
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_INIT code=0 msg="Loaded user: admin" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=116
-[2026-01-01T07:49:38Z] level=INFO module=FS_INIT code=0 msg="User table loaded: 1 active users" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=121
-[2026-01-01T07:49:38Z] level=INFO module=FS_INIT code=0 msg="File table loaded: 172 entries" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=154
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_INIT code=0 msg="Free space bitmap initialized: 23040 free blocks" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=185
-[2026-01-01T07:49:38Z] level=INFO module=FS_INIT code=0 msg="File system initialized successfully" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=45
-[2026-01-01T07:49:38Z] level=DEBUG module=FS_INIT code=0 msg="Users: 1, Files: 172, Free blocks: 23040" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/core/fs_init.cpp" line=46
-[2026-01-01T07:49:38Z] level=INFO module=USER_MGR code=0 msg="Creating new user: admin" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/user_manager.cpp" line=32
-[2026-01-01T07:49:38Z] level=DEBUG module=USER_MGR code=0 msg="Generated salt for user: admin" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/user_manager.cpp" line=60
-[2026-01-01T07:49:38Z] level=INFO module=USER_MGR code=0 msg="User created successfully: admin (role=ADMIN)" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/utils/user_manager.cpp" line=83
-[2026-01-01T07:49:38Z] level=INFO module=NET_SRV code=0 msg="Network server initialized on port 8080" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/network/server.cpp" line=28
-[2026-01-01T07:49:38Z] level=INFO module=NET_SRV code=0 msg="Server started successfully" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/network/server.cpp" line=77
-[2026-01-01T07:49:38Z] level=INFO module=NET_SRV code=0 msg="Accept connections thread started" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/network/server.cpp" line=119
-[2026-01-01T07:49:38Z] level=INFO module=NET_SRV code=0 msg="Process requests thread started" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/network/server.cpp" line=149
-[2026-01-01T07:49:42Z] level=DEBUG module=NET_SRV code=0 msg="Client disconnected" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/network/server.cpp" line=398
-[2026-01-01T07:49:43Z] level=DEBUG module=NET_SRV code=0 msg="Client disconnected" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/network/server.cpp" line=398
-[2026-01-01T07:49:44Z] level=DEBUG module=NET_SRV code=0 msg="Client disconnected" file="/home/ammar-anas/Documents/ITU/BSAI24056-Semester-03/DSA/OFS/file-verse/source/network/server.cpp" line=398
+[2026-01-02 07:23:52] [INFO] [system] === Logger initialized ===
+[2026-01-02 07:23:52] [INFO] [system] Initializing OFS system
+[2026-01-02 07:23:52] [INFO] [system] Crypto initialized
+[2026-01-02 07:23:52] [INFO] [system] OFS system initialized successfully
+[2026-01-02 07:23:52] [INFO] [system] Users loaded from disk
+[2026-01-02 07:23:52] [INFO] [system] Default admin user created
+[2026-01-02 07:39:54] [INFO] [system] === Logger initialized ===
+[2026-01-02 07:39:54] [INFO] [system] Initializing OFS system
+[2026-01-02 07:39:54] [INFO] [system] Crypto initialized
+[2026-01-02 07:39:54] [INFO] [system] OFS system initialized successfully
+[2026-01-02 07:39:54] [INFO] [system] Users loaded from disk
+[2026-01-02 07:39:54] [INFO] [system] Default admin user created
+[2026-01-02 07:40:34] [INFO] [system] === Logger initialized ===
+[2026-01-02 07:40:34] [INFO] [system] Initializing OFS system
+[2026-01-02 07:40:34] [INFO] [system] Crypto initialized
+[2026-01-02 07:40:34] [INFO] [system] OFS system initialized successfully
+[2026-01-02 07:40:34] [INFO] [system] Users loaded from disk
+[2026-01-02 07:40:34] [INFO] [system] Default admin user created
+[2026-01-02 07:40:57] [INFO] [system] === Logger initialized ===
+[2026-01-02 07:40:57] [INFO] [system] Initializing OFS system
+[2026-01-02 07:40:57] [INFO] [system] Crypto initialized
+[2026-01-02 07:40:57] [INFO] [system] OFS system initialized successfully
+[2026-01-02 07:40:57] [INFO] [system] Users loaded from disk
+[2026-01-02 07:40:57] [INFO] [system] Default admin user created
+[2026-01-02 07:43:55] [INFO] [system] === Logger initialized ===
+[2026-01-02 07:43:55] [INFO] [system] Initializing OFS system
+[2026-01-02 07:43:55] [INFO] [system] Crypto initialized
+[2026-01-02 07:43:55] [INFO] [system] OFS system initialized successfully
+[2026-01-02 07:43:55] [INFO] [system] Users loaded from disk
+[2026-01-02 07:43:55] [INFO] [system] Default admin user created
