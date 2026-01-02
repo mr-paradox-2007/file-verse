@@ -12,6 +12,6 @@ admin_password = admin123
 require_auth = true
 
 [server]
-port = 9000
+port = 8080
 max_connections = 20
 queue_timeout = 30

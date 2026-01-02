@@ -46,3 +46,75 @@
 [2026-01-02 10:07:10] [INFO] [user1] [FILE] Delete: /Hello.txt
 [2026-01-02 10:07:10] [INFO] [user] LISTDIR / [OK]
 [2026-01-02 10:07:10] [INFO] [user1] [DIR] List: /
+[2026-01-02 10:07:45] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:07:45] [INFO] [system] Users loaded from disk
+[2026-01-02 10:07:51] [INFO] [admin] User login successful
+[2026-01-02 10:07:51] [INFO] [system] [LOGIN] admin
+[2026-01-02 10:07:52] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:07:52] [INFO] [admin] [DIR] List: /
+[2026-01-02 10:13:18] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:15:21] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:15:21] [INFO] [system] Users loaded from disk
+[2026-01-02 10:15:34] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:15:34] [INFO] [system] Users loaded from disk
+[2026-01-02 10:15:36] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:15:36] [INFO] [system] Users loaded from disk
+[2026-01-02 10:16:59] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:16:59] [INFO] [system] Users loaded from disk
+[2026-01-02 10:17:22] [INFO] [system] User created: ammar
+[2026-01-02 10:17:22] [INFO] [system] [SIGNUP] ammar
+[2026-01-02 10:17:32] [INFO] [ammar] User login successful
+[2026-01-02 10:17:32] [INFO] [system] [LOGIN] ammar
+[2026-01-02 10:17:32] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:17:32] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:17:56] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:17:56] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:31:47] [INFO] [system] === Logger initialized ===
+[2026-01-02 10:31:47] [INFO] [system] Users loaded from disk
+[2026-01-02 10:32:37] [WARN] [alice] Login failed: user not found
+[2026-01-02 10:32:44] [WARN] [alice] Login failed: user not found
+[2026-01-02 10:32:52] [INFO] [ammar] User login successful
+[2026-01-02 10:32:52] [INFO] [system] [LOGIN] ammar
+[2026-01-02 10:32:53] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:32:53] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:33:01] [INFO] [admin] User login successful
+[2026-01-02 10:33:01] [INFO] [system] [LOGIN] admin
+[2026-01-02 10:33:01] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:33:01] [INFO] [admin] [DIR] List: /
+[2026-01-02 10:33:18] [INFO] [user] MKDIR /Home [OK]
+[2026-01-02 10:33:18] [INFO] [ammar] [DIR] Create: /Home
+[2026-01-02 10:33:18] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:33:18] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:33:19] [INFO] [ammar] [DIR] List: /Home
+[2026-01-02 10:33:22] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:33:22] [INFO] [admin] [DIR] List: /
+[2026-01-02 10:33:27] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:33:27] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:33:29] [INFO] [ammar] [DIR] List: /Home
+[2026-01-02 10:33:36] [INFO] [admin] [DIR] List: /Home
+[2026-01-02 10:33:43] [INFO] [user] CREATE /Home/something [OK]
+[2026-01-02 10:33:43] [INFO] [admin] [FILE] Create: /Home/something
+[2026-01-02 10:33:43] [INFO] [user] LISTDIR /Home [OK]
+[2026-01-02 10:33:43] [INFO] [admin] [DIR] List: /Home
+[2026-01-02 10:33:45] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:33:45] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:33:46] [INFO] [user] LISTDIR /Home [OK]
+[2026-01-02 10:33:46] [INFO] [ammar] [DIR] List: /Home
+[2026-01-02 10:33:48] [INFO] [user] READ /Home/something [OK]
+[2026-01-02 10:33:48] [INFO] [ammar] [FILE] Read: /Home/something
+[2026-01-02 10:33:53] [INFO] [user] DELETE /Home/something [OK]
+[2026-01-02 10:33:53] [INFO] [ammar] [FILE] Delete: /Home/something
+[2026-01-02 10:33:53] [INFO] [ammar] [DIR] List: /Home
+[2026-01-02 10:33:54] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:33:54] [INFO] [admin] [DIR] List: /
+[2026-01-02 10:33:55] [INFO] [admin] [DIR] List: /Home
+[2026-01-02 10:33:58] [INFO] [system] [LOGOUT] admin
+[2026-01-02 10:33:59] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:33:59] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:34:00] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:34:00] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:34:01] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:34:01] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:34:01] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 10:34:01] [INFO] [ammar] [DIR] List: /
+[2026-01-02 10:34:04] [INFO] [system] [LOGOUT] ammar

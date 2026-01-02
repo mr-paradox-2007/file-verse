@@ -477,17 +477,17 @@ int main() {
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(9000);
+    server_addr.sin_port = htons(8080);
     
-    std::cout << "[*] Binding to port 9000..." << std::endl;
+    std::cout << "[*] Binding to port 8080..." << std::endl;
     if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        std::cerr << "[ERROR] Bind failed" << std::endl;
+        std::cerr << "[!] Bind failed" << std::endl;
         return 1;
     }
     
     listen(server_socket, 20);
-    std::cout << "[SUCCESS] Server running on http://localhost:9000" << std::endl;
-    std::cout << "[INFO] Default admin account: admin / admin123" << std::endl;
+    std::cout << "[✓] Server running on http://localhost:8080" << std::endl;
+    std::cout << "[✓] Open http://localhost:8080 in your browser" << std::endl;
     std::cout << "[INFO] Press Ctrl+C to shutdown" << std::endl;
     std::cout << std::endl;
     
