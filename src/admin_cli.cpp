@@ -147,8 +147,6 @@ int cmd_list_active(int argc, char* argv[]) {
     std::cout << "║     Currently Logged-in Users         ║\n";
     std::cout << "╚════════════════════════════════════════╝\n\n";
     
-    // This would require storing active sessions globally
-    // For now, we'll show a placeholder
     std::cout << "Active session tracking requires server integration.\n";
     std::cout << "Check server logs for login/logout information.\n\n";
     return 0;
@@ -265,7 +263,6 @@ int cmd_info(int argc, char* argv[]) {
 int cmd_reset_admin(int argc, char* argv[]) {
     UserInfo admin;
     if (!g_storage->get_user("admin", &admin)) {
-        // Create default admin
         std::string password_hash = Crypto::hash_password("admin123");
         UserInfo new_admin;
         std::strncpy(new_admin.username, "admin", sizeof(new_admin.username) - 1);
@@ -277,7 +274,6 @@ int cmd_reset_admin(int argc, char* argv[]) {
         g_storage->add_user(new_admin);
         std::cout << "✓ Admin account created with password: admin123\n";
     } else {
-        // Reset admin password
         std::string password_hash = Crypto::hash_password("admin123");
         std::strncpy(admin.password_hash, password_hash.c_str(), sizeof(admin.password_hash) - 1);
         admin.is_active = 1;
@@ -295,7 +291,6 @@ int main(int argc, char* argv[]) {
     
     g_storage = new OmniStorage();
     
-    // Try to open existing filesystem, create if needed
     struct stat st;
     if (stat("data/system.omni", &st) != 0) {
         std::cout << "Initializing OFS storage..." << std::endl;

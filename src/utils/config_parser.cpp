@@ -34,19 +34,16 @@ bool ConfigParser::load(const std::string& config_path) {
     while (std::getline(file, line)) {
         line = trim(line);
         
-        // Skip empty lines and comments
         if (line.empty() || line[0] == ';' || line[0] == '#') {
             continue;
         }
         
-        // Parse section headers [section]
         if (line[0] == '[' && line[line.length() - 1] == ']') {
             current_section = to_lower(line.substr(1, line.length() - 2));
             config[current_section] = {};
             continue;
         }
         
-        // Parse key=value pairs
         size_t eq_pos = line.find('=');
         if (eq_pos != std::string::npos) {
             std::string key = trim(line.substr(0, eq_pos));
@@ -133,13 +130,11 @@ void ConfigParser::print_config() {
 }
 
 bool ConfigParser::validate() {
-    // Check required configuration sections
     if (!loaded) {
         std::cerr << "Configuration not loaded" << std::endl;
         return false;
     }
     
-    // Check filesystem section
     uint64_t total_size = get_uint("filesystem", "total_size", 0);
     if (total_size == 0) {
         std::cerr << "Invalid total_size in configuration" << std::endl;

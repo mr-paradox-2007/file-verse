@@ -3,7 +3,6 @@
 #include <sstream>
 
 int PathResolver::validate_path(const std::string& path) {
-    // Check basic requirements
     if (path.empty() || path[0] != '/') {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_PATH);
     }
@@ -12,17 +11,14 @@ int PathResolver::validate_path(const std::string& path) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_PATH);
     }
     
-    // Check for null bytes
     if (contains_null_bytes(path)) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_PATH);
     }
     
-    // Check for path traversal attacks (..)
     if (contains_path_traversal(path)) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_PATH);
     }
     
-    // Check for double slashes (except leading /)
     if (path.find("//") != std::string::npos) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_PATH);
     }
@@ -44,7 +40,6 @@ std::string PathResolver::normalize(const std::string& path) {
         }
     }
     
-    // Remove trailing slash (except for root)
     if (result.length() > 1 && result.back() == '/') {
         result.pop_back();
     }
@@ -110,12 +105,10 @@ bool PathResolver::is_valid_filename(const std::string& filename) {
         return false;
     }
     
-    // Cannot start with dot
     if (filename[0] == '.') {
         return false;
     }
     
-    // Must contain at least one alphanumeric character
     bool has_alnum = false;
     for (char c : filename) {
         if (std::isalnum(c)) {
@@ -142,7 +135,6 @@ bool PathResolver::contains_null_bytes(const std::string& path) {
 }
 
 bool PathResolver::contains_path_traversal(const std::string& path) {
-    // Check for .. sequences
     if (path.find("..") != std::string::npos) {
         return true;
     }

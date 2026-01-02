@@ -12,7 +12,6 @@ int fs_init(OFS_Instance* instance, const std::string& omni_path,
     Logger::init();
     Logger::info("Initializing OFS system");
     
-    // Initialize crypto
     std::cout << "  [*] Crypto init..." << std::endl;
     try {
         Crypto::init();

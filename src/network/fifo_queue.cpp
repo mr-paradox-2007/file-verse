@@ -5,16 +5,14 @@
 FIFOQueue::FIFOQueue(std::function<OperationResult(const Operation&)> worker_func)
     : worker_function(worker_func), running(true), total_ops(0), total_errors(0), total_time(0) {
     
-    // Start worker thread
     std::thread worker(&FIFOQueue::worker_loop, this);
-    worker.detach();  // Run in background
+    worker.detach();
 }
 
 FIFOQueue::~FIFOQueue() {
     running = false;
     queue_cv.notify_all();
     
-    // Wait briefly for pending operations
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -87,7 +85,6 @@ void FIFOQueue::worker_loop() {
     while (running) {
         Operation op(0, "", "");
         
-        // Wait for operation to be queued
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
             
@@ -101,7 +98,7 @@ void FIFOQueue::worker_loop() {
                     continue;
                 }
             } else {
-                continue;  // Timeout, check running flag
+                continue;
             }
         }
         
@@ -109,7 +106,6 @@ void FIFOQueue::worker_loop() {
             break;
         }
         
-        // Execute operation
         auto start_time = std::chrono::system_clock::now();
         OperationResult result = worker_function(op);
         auto end_time = std::chrono::system_clock::now();
@@ -119,14 +115,12 @@ void FIFOQueue::worker_loop() {
         
         result.processing_time_ms = elapsed_ms;
         
-        // Update statistics
         total_ops++;
         if (result.status_code != 0) {
             total_errors++;
         }
         total_time += elapsed_ms;
         
-        // Store result
         {
             std::lock_guard<std::mutex> lock(result_mutex);
             results.push(std::make_shared<OperationResult>(result));

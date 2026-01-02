@@ -8,7 +8,6 @@
 int fs_format(const std::string& omni_path, const std::string& config_path) {
     Logger::info("Formatting OFS file: " + omni_path);
     
-    // Load configuration
     if (!ConfigParser::load(config_path)) {
         Logger::error("Failed to load configuration from: " + config_path);
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_CONFIG);
@@ -19,27 +18,24 @@ int fs_format(const std::string& omni_path, const std::string& config_path) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_CONFIG);
     }
     
-    // Get configuration values
     uint64_t total_size = ConfigParser::get_uint("filesystem", "total_size", 104857600);
     uint64_t block_size = ConfigParser::get_uint("filesystem", "block_size", 4096);
     uint32_t max_users = ConfigParser::get_uint("filesystem", "max_users", 50);
     
-    // Open file for writing
     std::ofstream file(omni_path, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
         Logger::error("Failed to create omni file: " + omni_path);
         return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     }
     
-    // Create and write header
     OMNIHeader header;
     std::memcpy(header.magic, "OMNIFS01", 8);
-    header.format_version = 0x00010000;  // v1.0
+    header.format_version = 0x00010000;
     header.total_size = total_size;
     header.header_size = 512;
     header.block_size = block_size;
     header.max_users = max_users;
-    header.user_table_offset = 512;  // After header
+    header.user_table_offset = 512;
     
     file.write(reinterpret_cast<const char*>(&header), sizeof(header));
     
@@ -49,7 +45,6 @@ int fs_format(const std::string& omni_path, const std::string& config_path) {
         return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     }
     
-    // Write user table (initially empty)
     uint64_t user_table_size = max_users * sizeof(UserInfo);
     char* user_table = new char[user_table_size];
     std::memset(user_table, 0, user_table_size);
@@ -63,13 +58,11 @@ int fs_format(const std::string& omni_path, const std::string& config_path) {
         return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     }
     
-    // Write free space bitmap
-    uint64_t metadata_area_size = 1024 * 1024;  // 1MB for metadata
+    uint64_t metadata_area_size = 1024 * 1024;
     uint64_t num_blocks = (total_size - header.header_size - user_table_size - metadata_area_size) / block_size;
     
-    // Bitmap: 1 byte per block (0 = free, 1 = used)
     char* bitmap = new char[num_blocks];
-    std::memset(bitmap, 0, num_blocks);  // All blocks initially free
+    std::memset(bitmap, 0, num_blocks);
     
     file.write(bitmap, num_blocks);
     delete[] bitmap;
@@ -80,7 +73,6 @@ int fs_format(const std::string& omni_path, const std::string& config_path) {
         return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     }
     
-    // Write metadata area (file entries)
     char* metadata = new char[metadata_area_size];
     std::memset(metadata, 0, metadata_area_size);
     
@@ -93,7 +85,6 @@ int fs_format(const std::string& omni_path, const std::string& config_path) {
         return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     }
     
-    // Fill remaining space with zeros
     char* padding = new char[65536];
     std::memset(padding, 0, 65536);
     
@@ -124,12 +115,10 @@ int fs_validate(const std::string& omni_path) {
         return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     }
     
-    // Check magic number
     if (std::memcmp(header.magic, "OMNIFS01", 8) != 0) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_CONFIG);
     }
     
-    // Check format version
     if (header.format_version != 0x00010000) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_CONFIG);
     }

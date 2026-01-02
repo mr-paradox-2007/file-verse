@@ -12,7 +12,6 @@ OmniStorage::~OmniStorage() {
 }
 
 void OmniStorage::init_encryption_table() {
-    // Simple substitution cipher
     for (int i = 0; i < 256; i++) {
         encryption_table[i] = (i + 73) % 256;
         decryption_table[encryption_table[i]] = i;
@@ -25,7 +24,6 @@ bool OmniStorage::create(const std::string& path, uint64_t total_size) {
     file.open(path, std::ios::binary | std::ios::out | std::ios::trunc);
     if (!file.is_open()) return false;
     
-    // Initialize header
     std::memset(&header, 0, sizeof(header));
     std::memcpy(header.magic, "OMNIFS01", 8);
     header.format_version = 0x00010000;
@@ -37,17 +35,14 @@ bool OmniStorage::create(const std::string& path, uint64_t total_size) {
     
     uint32_t num_blocks = (total_size - 512 - 6400 - MAX_METADATA_ENTRIES * METADATA_ENTRY_SIZE) / BLOCK_SIZE;
     
-    // Write header
     file.write((char*)&header, sizeof(header));
     file.flush();
     
-    // Initialize metadata
     metadata_cache.resize(MAX_METADATA_ENTRIES);
     for (auto& entry : metadata_cache) {
         entry.valid = 0;
     }
     
-    // Create root directory (entry 0)
     metadata_cache[0].valid = 1;
     metadata_cache[0].type = 1;
     metadata_cache[0].parent_index = 0;
@@ -58,10 +53,8 @@ bool OmniStorage::create(const std::string& path, uint64_t total_size) {
     metadata_cache[0].created_time = time(nullptr);
     metadata_cache[0].modified_time = time(nullptr);
     
-    // Initialize bitmap
     block_bitmap.resize(num_blocks, 0);
     
-    // Save metadata and bitmap before closing
     if (!save_metadata()) {
         file.close();
         return false;
@@ -71,7 +64,6 @@ bool OmniStorage::create(const std::string& path, uint64_t total_size) {
         return false;
     }
     
-    // Initialize user table
     for (int i = 0; i < header.max_users; i++) {
         UserInfo empty_user;
         memset(&empty_user, 0, sizeof(empty_user));
@@ -195,7 +187,6 @@ bool OmniStorage::save_users() {
         i++;
     }
     
-    // Fill remaining with zeros
     UserInfo empty;
     memset(&empty, 0, sizeof(UserInfo));
     while (i < header.max_users) {

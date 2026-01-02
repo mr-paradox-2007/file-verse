@@ -118,3 +118,59 @@
 [2026-01-02 10:34:01] [INFO] [user] LISTDIR / [OK]
 [2026-01-02 10:34:01] [INFO] [ammar] [DIR] List: /
 [2026-01-02 10:34:04] [INFO] [system] [LOGOUT] ammar
+[2026-01-02 14:59:54] [INFO] [system] === Logger initialized ===
+[2026-01-02 14:59:54] [INFO] [system] Default admin user created
+[2026-01-02 14:59:54] [INFO] [system] Users loaded from disk
+[2026-01-02 15:13:08] [INFO] [system] === Logger initialized ===
+[2026-01-02 15:13:08] [INFO] [system] Users loaded from disk
+[2026-01-02 15:13:18] [INFO] [admin] User login successful
+[2026-01-02 15:13:18] [INFO] [system] [LOGIN] admin
+[2026-01-02 15:13:18] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 15:13:18] [INFO] [admin] [DIR] List: /
+[2026-01-02 15:13:31] [INFO] [user] MKDIR /sbghkjgkh [OK]
+[2026-01-02 15:13:31] [INFO] [admin] [DIR] Create: /sbghkjgkh
+[2026-01-02 15:13:31] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 15:13:31] [INFO] [admin] [DIR] List: /
+[2026-01-02 15:13:35] [INFO] [admin] [DIR] List: /sbghkjgkh
+[2026-01-02 15:13:45] [INFO] [user] CREATE /sbghkjgkh/abc.txt [OK]
+[2026-01-02 15:13:45] [INFO] [admin] [FILE] Create: /sbghkjgkh/abc.txt
+[2026-01-02 15:13:45] [INFO] [user] LISTDIR /sbghkjgkh [OK]
+[2026-01-02 15:13:45] [INFO] [admin] [DIR] List: /sbghkjgkh
+[2026-01-02 15:14:18] [INFO] [system] User created: ahmed
+[2026-01-02 15:14:18] [INFO] [system] [SIGNUP] ahmed
+[2026-01-02 15:14:28] [INFO] [ahmed] User login successful
+[2026-01-02 15:14:28] [INFO] [system] [LOGIN] ahmed
+[2026-01-02 15:14:28] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 15:14:28] [INFO] [ahmed] [DIR] List: /
+[2026-01-02 15:14:31] [INFO] [user] LISTDIR /sbghkjgkh [OK]
+[2026-01-02 15:14:31] [INFO] [ahmed] [DIR] List: /sbghkjgkh
+[2026-01-02 15:14:46] [INFO] [system] [LOGOUT] admin
+[2026-01-02 15:15:06] [INFO] [admin] User login successful
+[2026-01-02 15:15:06] [INFO] [system] [LOGIN] admin
+[2026-01-02 15:15:06] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 15:15:06] [INFO] [admin] [DIR] List: /
+[2026-01-02 15:15:10] [INFO] [user] LISTDIR /sbghkjgkh [OK]
+[2026-01-02 15:15:10] [INFO] [admin] [DIR] List: /sbghkjgkh
+[2026-01-02 15:15:21] [INFO] [user] CREATE /sbghkjgkh/abc [OK]
+[2026-01-02 15:15:21] [INFO] [admin] [FILE] Create: /sbghkjgkh/abc
+[2026-01-02 15:15:21] [INFO] [user] LISTDIR /sbghkjgkh [OK]
+[2026-01-02 15:15:21] [INFO] [admin] [DIR] List: /sbghkjgkh
+[2026-01-02 15:15:23] [INFO] [user] READ /sbghkjgkh/abc [OK]
+[2026-01-02 15:15:23] [INFO] [admin] [FILE] Read: /sbghkjgkh/abc
+[2026-01-02 15:15:28] [INFO] [system] [LOGOUT] admin
+[2026-01-02 15:15:43] [INFO] [system] [LOGOUT] ahmed
+[2026-01-02 15:15:47] [INFO] [ahmed] User login successful
+[2026-01-02 15:15:47] [INFO] [system] [LOGIN] ahmed
+[2026-01-02 15:15:48] [INFO] [user] LISTDIR / [OK]
+[2026-01-02 15:15:48] [INFO] [ahmed] [DIR] List: /
+[2026-01-02 15:15:49] [INFO] [user] LISTDIR /sbghkjgkh [OK]
+[2026-01-02 15:15:49] [INFO] [ahmed] [DIR] List: /sbghkjgkh
+[2026-01-02 15:15:53] [INFO] [user] READ /sbghkjgkh/abc [OK]
+[2026-01-02 15:15:53] [INFO] [ahmed] [FILE] Read: /sbghkjgkh/abc
+[2026-01-02 15:15:54] [INFO] [user] READ /sbghkjgkh/abc [OK]
+[2026-01-02 15:15:54] [INFO] [ahmed] [FILE] Read: /sbghkjgkh/abc
+[2026-01-02 15:15:54] [INFO] [user] READ /sbghkjgkh/abc [OK]
+[2026-01-02 15:15:54] [INFO] [ahmed] [FILE] Read: /sbghkjgkh/abc
+[2026-01-02 15:21:22] [INFO] [system] [LOGOUT] ahmed
+[2026-01-02 15:49:00] [INFO] [system] === Logger initialized ===
+[2026-01-02 15:49:00] [INFO] [system] Users loaded from disk

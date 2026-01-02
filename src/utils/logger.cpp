@@ -32,9 +32,8 @@ void Logger::init(const std::string& log_file_path) {
         return;
     }
     
-    // Try to create logs directory (best effort)
     int ret = system("mkdir -p logs 2>/dev/null");
-    (void)ret;  // Suppress unused variable warning
+    (void)ret;
     
     log_file.open(log_file_path, std::ios::app);
     if (!log_file.is_open()) {
@@ -43,8 +42,6 @@ void Logger::init(const std::string& log_file_path) {
     }
     
     initialized = true;
-    // Don't call info() here as it will try to acquire the mutex again (deadlock)
-    // Just write directly
     if (log_file.is_open()) {
         std::string timestamp = get_timestamp();
         log_file << "[" << timestamp << "] [INFO] [system] === Logger initialized ===" << std::endl;
@@ -78,7 +75,6 @@ void Logger::log(Level level, const std::string& message, const std::string& use
     log_file << log_line << std::endl;
     log_file.flush();
     
-    // Also print to console for important messages
     if (level >= Level::WARN) {
         std::cout << log_line << std::endl;
     }
