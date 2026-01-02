@@ -1,331 +1,246 @@
 #include "file_ops.hpp"
+#include "omni_storage.hpp"
 #include "logger.hpp"
 #include "path_resolver.hpp"
 #include <map>
-#include <vector>
 #include <mutex>
 
-// In-memory file system structure
-struct FileNode {
-    FileEntry entry;
-    std::vector<char> data;
-    std::vector<uint32_t> children;  // For directories: child file indices
-};
+static OmniStorage* g_storage = nullptr;
+static std::mutex g_storage_mutex;
+static std::map<std::string, uint32_t> g_user_id_map;
+static uint32_t g_next_user_id = 1;
 
-static std::vector<FileNode> file_tree;
-static std::map<std::string, uint32_t> path_index;  // path -> file index
-static std::mutex fs_mutex;
+void set_storage_instance(OmniStorage* storage) {
+    g_storage = storage;
+}
 
-// ============================================================================
-// FILE OPERATIONS
-// ============================================================================
-
-int file_create(OFS_Session session, const std::string& path,
-                const void* data, size_t size) {
+uint32_t get_user_id(const std::string& username) {
+    auto it = g_user_id_map.find(username);
+    if (it != g_user_id_map.end()) return it->second;
     
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
+    uint32_t id = g_next_user_id++;
+    g_user_id_map[username] = id;
+    return id;
+}
+
+uint32_t find_entry_by_path(const std::string& path, uint32_t user_id) {
+    if (!g_storage) return 0xFFFFFFFF;
+    
+    if (path == "/") return 0;
+    
+    std::vector<std::string> parts = PathResolver::split(path);
+    uint32_t current = 0;
+    
+    for (const auto& part : parts) {
+        std::vector<uint32_t> children = g_storage->list_children(current);
+        bool found = false;
+        
+        for (uint32_t child_idx : children) {
+            MetadataEntry* entry = g_storage->get_entry(child_idx);
+            if (entry && strcmp(entry->name, part.c_str()) == 0) {
+                current = child_idx;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) return 0xFFFFFFFF;
     }
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
+    return current;
+}
+
+int file_create(OFS_Session session, const std::string& path, const void* data, size_t size) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
-    // Check if file already exists
-    if (path_index.find(path) != path_index.end()) {
+    int validation = PathResolver::validate_path(path);
+    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) return validation;
+    
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
+    
+    std::string parent_path = PathResolver::get_parent(path);
+    std::string filename = PathResolver::get_filename(path);
+    
+    uint32_t user_id = 1;
+    uint32_t parent_idx = find_entry_by_path(parent_path, user_id);
+    
+    if (parent_idx == 0xFFFFFFFF) {
+        return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
+    }
+    
+    if (find_entry_by_path(path, user_id) != 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_FILE_EXISTS);
     }
     
-    // Create file entry
-    FileNode node;
-    node.entry.setType(EntryType::FILE);
-    std::strncpy(node.entry.name, PathResolver::get_filename(path).c_str(), sizeof(node.entry.name) - 1);
-    node.entry.size = size;
-    node.entry.permissions = 0644;
-    node.entry.created_time = std::time(nullptr);
-    node.entry.modified_time = std::time(nullptr);
-    node.entry.inode = file_tree.size();
+    uint32_t entry_idx = g_storage->allocate_entry(0, parent_idx, filename, user_id);
+    if (entry_idx == 0xFFFFFFFF) {
+        return static_cast<int>(OFSErrorCodes::ERROR_NO_SPACE);
+    }
     
     if (data && size > 0) {
-        node.data.assign((char*)data, (char*)data + size);
+        if (!g_storage->write_file_data(entry_idx, data, size)) {
+            g_storage->free_entry(entry_idx);
+            return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
+        }
     }
     
-    uint32_t file_index = file_tree.size();
-    file_tree.push_back(node);
-    path_index[path] = file_index;
-    
-    Logger::log_file_op("CREATE_FILE", path, "system", true);
+    Logger::log_file_op("CREATE", path, "user", true);
     return static_cast<int>(OFSErrorCodes::SUCCESS);
 }
 
-int file_read(OFS_Session session, const std::string& path,
-              void** out_buffer, size_t* out_size) {
+int file_read(OFS_Session session, const std::string& path, void** out_buffer, size_t* out_size) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
     int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
+    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) return validation;
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
     
-    if (path_index.find(path) == path_index.end()) {
+    uint32_t entry_idx = find_entry_by_path(path, 1);
+    if (entry_idx == 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     }
     
-    uint32_t file_index = path_index[path];
-    FileNode& node = file_tree[file_index];
-    
-    if (node.entry.getType() != EntryType::FILE) {
+    MetadataEntry* entry = g_storage->get_entry(entry_idx);
+    if (!entry || entry->type != 0) {
         return static_cast<int>(OFSErrorCodes::ERROR_INVALID_OPERATION);
     }
     
-    *out_size = node.data.size();
+    *out_size = entry->total_size;
     if (*out_size == 0) {
         *out_buffer = nullptr;
-    } else {
-        *out_buffer = new char[*out_size];
-        std::memcpy(*out_buffer, node.data.data(), *out_size);
+        return static_cast<int>(OFSErrorCodes::SUCCESS);
     }
     
-    Logger::log_file_op("READ_FILE", path, "system", true);
+    *out_buffer = new char[*out_size];
+    size_t read = g_storage->read_file_data(entry_idx, *out_buffer, *out_size);
+    
+    if (read != *out_size) {
+        delete[] (char*)*out_buffer;
+        *out_buffer = nullptr;
+        return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
+    }
+    
+    Logger::log_file_op("READ", path, "user", true);
     return static_cast<int>(OFSErrorCodes::SUCCESS);
 }
 
-int file_edit(OFS_Session session, const std::string& path,
-              const void* data, size_t size, uint64_t index) {
-    
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
-    
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(path) == path_index.end()) {
-        return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
-    }
-    
-    uint32_t file_index = path_index[path];
-    FileNode& node = file_tree[file_index];
-    
-    if (node.entry.getType() != EntryType::FILE) {
-        return static_cast<int>(OFSErrorCodes::ERROR_INVALID_OPERATION);
-    }
-    
-    // Extend file if needed
-    if (index + size > node.data.size()) {
-        node.data.resize(index + size, 0);
-    }
-    
-    std::memcpy(node.data.data() + index, data, size);
-    node.entry.size = node.data.size();
-    node.entry.modified_time = std::time(nullptr);
-    
-    Logger::log_file_op("EDIT_FILE", path, "system", true);
-    return static_cast<int>(OFSErrorCodes::SUCCESS);
+int file_edit(OFS_Session session, const std::string& path, const void* data, size_t size, uint64_t index) {
+    return file_delete(session, path) == 0 ? file_create(session, path, data, size) : static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
 }
 
 int file_delete(OFS_Session session, const std::string& path) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
     int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
+    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) return validation;
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
     
-    if (path_index.find(path) == path_index.end()) {
+    uint32_t entry_idx = find_entry_by_path(path, 1);
+    if (entry_idx == 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     }
     
-    uint32_t file_index = path_index[path];
-    FileNode& node = file_tree[file_index];
-    
-    if (node.entry.getType() != EntryType::FILE) {
-        return static_cast<int>(OFSErrorCodes::ERROR_INVALID_OPERATION);
+    if (!g_storage->free_entry(entry_idx)) {
+        return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     }
     
-    node.data.clear();
-    path_index.erase(path);
-    
-    Logger::log_file_op("DELETE_FILE", path, "system", true);
+    Logger::log_file_op("DELETE", path, "user", true);
     return static_cast<int>(OFSErrorCodes::SUCCESS);
 }
 
 int file_truncate(OFS_Session session, const std::string& path) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(path) == path_index.end()) {
+    uint32_t entry_idx = find_entry_by_path(path, 1);
+    if (entry_idx == 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     }
     
-    uint32_t file_index = path_index[path];
-    FileNode& node = file_tree[file_index];
-    
-    node.data.clear();
-    node.entry.size = 0;
-    node.entry.modified_time = std::time(nullptr);
-    
-    Logger::log_file_op("TRUNCATE_FILE", path, "system", true);
-    return static_cast<int>(OFSErrorCodes::SUCCESS);
+    return g_storage->write_file_data(entry_idx, nullptr, 0) ? 
+           static_cast<int>(OFSErrorCodes::SUCCESS) : 
+           static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
 }
 
 int file_exists(OFS_Session session, const std::string& path) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(path) != path_index.end()) {
-        return static_cast<int>(OFSErrorCodes::SUCCESS);
-    }
-    
-    return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
+    return find_entry_by_path(path, 1) != 0xFFFFFFFF ? 
+           static_cast<int>(OFSErrorCodes::SUCCESS) : 
+           static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
 }
 
-int file_rename(OFS_Session session, const std::string& old_path,
-                const std::string& new_path) {
+int file_rename(OFS_Session session, const std::string& old_path, const std::string& new_path) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
-    int validation1 = PathResolver::validate_path(old_path);
-    int validation2 = PathResolver::validate_path(new_path);
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
     
-    if (validation1 != static_cast<int>(OFSErrorCodes::SUCCESS) ||
-        validation2 != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return static_cast<int>(OFSErrorCodes::ERROR_INVALID_PATH);
-    }
-    
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(old_path) == path_index.end()) {
+    uint32_t old_idx = find_entry_by_path(old_path, 1);
+    if (old_idx == 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     }
     
-    if (path_index.find(new_path) != path_index.end()) {
+    if (find_entry_by_path(new_path, 1) != 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_FILE_EXISTS);
     }
     
-    uint32_t file_index = path_index[old_path];
-    path_index[new_path] = file_index;
-    path_index.erase(old_path);
-    
-    std::strncpy(file_tree[file_index].entry.name, 
-                 PathResolver::get_filename(new_path).c_str(),
-                 sizeof(file_tree[file_index].entry.name) - 1);
-    
-    Logger::log_file_op("RENAME_FILE", old_path + " -> " + new_path, "system", true);
-    return static_cast<int>(OFSErrorCodes::SUCCESS);
-}
-
-int get_metadata(OFS_Session session, const std::string& path,
-                 FileMetadata* metadata) {
-    
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
-    
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(path) == path_index.end()) {
-        return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
-    }
-    
-    uint32_t file_index = path_index[path];
-    metadata->entry = file_tree[file_index].entry;
-    metadata->blocks_used = (file_tree[file_index].data.size() + 4095) / 4096;
-    metadata->actual_size = file_tree[file_index].data.size();
-    
-    std::strncpy(metadata->path, path.c_str(), sizeof(metadata->path) - 1);
+    MetadataEntry* entry = g_storage->get_entry(old_idx);
+    std::string new_name = PathResolver::get_filename(new_path);
+    strncpy(entry->name, new_name.c_str(), 31);
+    entry->name[31] = '\0';
     
     return static_cast<int>(OFSErrorCodes::SUCCESS);
 }
-
-int set_permissions(OFS_Session session, const std::string& path,
-                   uint32_t permissions) {
-    
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
-    
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(path) == path_index.end()) {
-        return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
-    }
-    
-    uint32_t file_index = path_index[path];
-    file_tree[file_index].entry.permissions = permissions;
-    
-    return static_cast<int>(OFSErrorCodes::SUCCESS);
-}
-
-// ============================================================================
-// DIRECTORY OPERATIONS
-// ============================================================================
 
 int dir_create(OFS_Session session, const std::string& path) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
     int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
+    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) return validation;
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
     
-    if (path_index.find(path) != path_index.end()) {
-        return static_cast<int>(OFSErrorCodes::ERROR_FILE_EXISTS);
-    }
+    std::string parent_path = PathResolver::get_parent(path);
+    std::string dirname = PathResolver::get_filename(path);
     
-    // Create directory entry
-    FileNode node;
-    node.entry.setType(EntryType::DIRECTORY);
-    std::strncpy(node.entry.name, PathResolver::get_filename(path).c_str(), sizeof(node.entry.name) - 1);
-    node.entry.size = 0;
-    node.entry.permissions = 0755;
-    node.entry.created_time = std::time(nullptr);
-    node.entry.modified_time = std::time(nullptr);
-    node.entry.inode = file_tree.size();
-    
-    uint32_t dir_index = file_tree.size();
-    file_tree.push_back(node);
-    path_index[path] = dir_index;
-    
-    Logger::log_file_op("CREATE_DIR", path, "system", true);
-    return static_cast<int>(OFSErrorCodes::SUCCESS);
-}
-
-int dir_list(OFS_Session session, const std::string& path,
-             FileEntry** out_entries, int* out_count) {
-    
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
-    
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(path) == path_index.end()) {
+    uint32_t parent_idx = find_entry_by_path(parent_path, 1);
+    if (parent_idx == 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     }
     
-    uint32_t dir_index = path_index[path];
-    FileNode& node = file_tree[dir_index];
-    
-    if (node.entry.getType() != EntryType::DIRECTORY) {
-        return static_cast<int>(OFSErrorCodes::ERROR_INVALID_OPERATION);
+    if (find_entry_by_path(path, 1) != 0xFFFFFFFF) {
+        return static_cast<int>(OFSErrorCodes::ERROR_FILE_EXISTS);
     }
     
-    // Count children in this directory
-    *out_count = node.children.size();
+    uint32_t entry_idx = g_storage->allocate_entry(1, parent_idx, dirname, 1);
+    if (entry_idx == 0xFFFFFFFF) {
+        return static_cast<int>(OFSErrorCodes::ERROR_NO_SPACE);
+    }
+    
+    Logger::log_file_op("MKDIR", path, "user", true);
+    return static_cast<int>(OFSErrorCodes::SUCCESS);
+}
+
+int dir_list(OFS_Session session, const std::string& path, FileEntry** out_entries, int* out_count) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
+    
+    int validation = PathResolver::validate_path(path);
+    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) return validation;
+    
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
+    
+    uint32_t dir_idx = find_entry_by_path(path, 1);
+    if (dir_idx == 0xFFFFFFFF) {
+        return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
+    }
+    
+    std::vector<uint32_t> children = g_storage->list_children(dir_idx);
+    *out_count = children.size();
     
     if (*out_count == 0) {
         *out_entries = nullptr;
@@ -333,89 +248,105 @@ int dir_list(OFS_Session session, const std::string& path,
     }
     
     *out_entries = new FileEntry[*out_count];
+    
     for (int i = 0; i < *out_count; i++) {
-        (*out_entries)[i] = file_tree[node.children[i]].entry;
+        MetadataEntry* entry = g_storage->get_entry(children[i]);
+        if (entry) {
+            strncpy((*out_entries)[i].name, entry->name, sizeof((*out_entries)[i].name));
+            (*out_entries)[i].type = entry->type;
+            (*out_entries)[i].size = entry->total_size;
+            (*out_entries)[i].permissions = entry->permissions;
+            (*out_entries)[i].created_time = entry->created_time;
+            (*out_entries)[i].modified_time = entry->modified_time;
+            (*out_entries)[i].inode = children[i];
+        }
     }
     
-    Logger::log_file_op("LIST_DIR", path, "system", true);
+    Logger::log_file_op("LISTDIR", path, "user", true);
     return static_cast<int>(OFSErrorCodes::SUCCESS);
 }
 
 int dir_delete(OFS_Session session, const std::string& path) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
-    }
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
-    
-    if (path_index.find(path) == path_index.end()) {
+    uint32_t dir_idx = find_entry_by_path(path, 1);
+    if (dir_idx == 0xFFFFFFFF) {
         return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     }
     
-    uint32_t dir_index = path_index[path];
-    FileNode& node = file_tree[dir_index];
-    
-    if (node.entry.getType() != EntryType::DIRECTORY) {
-        return static_cast<int>(OFSErrorCodes::ERROR_INVALID_OPERATION);
-    }
-    
-    if (!node.children.empty()) {
+    std::vector<uint32_t> children = g_storage->list_children(dir_idx);
+    if (!children.empty()) {
         return static_cast<int>(OFSErrorCodes::ERROR_DIRECTORY_NOT_EMPTY);
     }
     
-    path_index.erase(path);
-    
-    Logger::log_file_op("DELETE_DIR", path, "system", true);
-    return static_cast<int>(OFSErrorCodes::SUCCESS);
+    return g_storage->free_entry(dir_idx) ? 
+           static_cast<int>(OFSErrorCodes::SUCCESS) : 
+           static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
 }
 
 int dir_exists(OFS_Session session, const std::string& path) {
+    return file_exists(session, path);
+}
+
+void free_buffer(void* buffer) {
+    delete[] (char*)buffer;
+}
+
+int get_metadata(OFS_Session session, const std::string& path, FileMetadata* metadata) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
-    int validation = PathResolver::validate_path(path);
-    if (validation != static_cast<int>(OFSErrorCodes::SUCCESS)) {
-        return validation;
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
+    
+    uint32_t entry_idx = find_entry_by_path(path, 1);
+    if (entry_idx == 0xFFFFFFFF) {
+        return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     }
     
-    std::lock_guard<std::mutex> lock(fs_mutex);
+    MetadataEntry* entry = g_storage->get_entry(entry_idx);
+    if (!entry) return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
     
-    if (path_index.find(path) != path_index.end()) {
-        if (file_tree[path_index[path]].entry.getType() == EntryType::DIRECTORY) {
-            return static_cast<int>(OFSErrorCodes::SUCCESS);
-        }
+    strncpy(metadata->path, path.c_str(), sizeof(metadata->path));
+    strncpy(metadata->entry.name, entry->name, sizeof(metadata->entry.name));
+    metadata->entry.type = entry->type;
+    metadata->entry.size = entry->total_size;
+    metadata->entry.permissions = entry->permissions;
+    metadata->entry.created_time = entry->created_time;
+    metadata->entry.modified_time = entry->modified_time;
+    
+    return static_cast<int>(OFSErrorCodes::SUCCESS);
+}
+
+int set_permissions(OFS_Session session, const std::string& path, uint32_t permissions) {
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
+    
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
+    
+    uint32_t entry_idx = find_entry_by_path(path, 1);
+    if (entry_idx == 0xFFFFFFFF) {
+        return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
+    }
+    
+    MetadataEntry* entry = g_storage->get_entry(entry_idx);
+    if (entry) {
+        entry->permissions = permissions;
+        return static_cast<int>(OFSErrorCodes::SUCCESS);
     }
     
     return static_cast<int>(OFSErrorCodes::ERROR_NOT_FOUND);
 }
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-void free_buffer(void* buffer) {
-    delete[] reinterpret_cast<char*>(buffer);
-}
-
 int get_stats(OFS_Session session, FSStats* stats) {
-    std::lock_guard<std::mutex> lock(fs_mutex);
+    if (!g_storage) return static_cast<int>(OFSErrorCodes::ERROR_IO_ERROR);
     
+    std::lock_guard<std::mutex> lock(g_storage_mutex);
+    
+    stats->free_space = g_storage->get_free_space();
+    stats->used_space = g_storage->get_used_blocks() * 65536;
+    stats->total_size = g_storage->get_total_blocks() * 65536;
     stats->total_files = 0;
     stats->total_directories = 0;
-    stats->used_space = 0;
-    
-    for (const auto& node : file_tree) {
-        if (node.entry.getType() == EntryType::FILE) {
-            stats->total_files++;
-            stats->used_space += node.data.size();
-        } else {
-            stats->total_directories++;
-        }
-    }
-    
-    stats->total_size = 104857600;  // Default 100MB
-    stats->free_space = stats->total_size - stats->used_space;
-    stats->fragmentation = 0.0;
     
     return static_cast<int>(OFSErrorCodes::SUCCESS);
 }
@@ -423,16 +354,16 @@ int get_stats(OFS_Session session, FSStats* stats) {
 const char* get_error_message(int error_code) {
     switch (static_cast<OFSErrorCodes>(error_code)) {
         case OFSErrorCodes::SUCCESS: return "Success";
-        case OFSErrorCodes::ERROR_NOT_FOUND: return "File or resource not found";
+        case OFSErrorCodes::ERROR_NOT_FOUND: return "Not found";
         case OFSErrorCodes::ERROR_PERMISSION_DENIED: return "Permission denied";
         case OFSErrorCodes::ERROR_IO_ERROR: return "I/O error";
         case OFSErrorCodes::ERROR_INVALID_PATH: return "Invalid path";
-        case OFSErrorCodes::ERROR_FILE_EXISTS: return "File already exists";
-        case OFSErrorCodes::ERROR_NO_SPACE: return "No space available";
-        case OFSErrorCodes::ERROR_INVALID_CONFIG: return "Invalid configuration";
-        case OFSErrorCodes::ERROR_NOT_IMPLEMENTED: return "Feature not yet implemented";
-        case OFSErrorCodes::ERROR_INVALID_SESSION: return "Invalid or expired session";
-        case OFSErrorCodes::ERROR_DIRECTORY_NOT_EMPTY: return "Directory is not empty";
+        case OFSErrorCodes::ERROR_FILE_EXISTS: return "File exists";
+        case OFSErrorCodes::ERROR_NO_SPACE: return "No space";
+        case OFSErrorCodes::ERROR_INVALID_CONFIG: return "Invalid config";
+        case OFSErrorCodes::ERROR_NOT_IMPLEMENTED: return "Not implemented";
+        case OFSErrorCodes::ERROR_INVALID_SESSION: return "Invalid session";
+        case OFSErrorCodes::ERROR_DIRECTORY_NOT_EMPTY: return "Directory not empty";
         case OFSErrorCodes::ERROR_INVALID_OPERATION: return "Invalid operation";
         default: return "Unknown error";
     }

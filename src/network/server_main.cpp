@@ -3,25 +3,20 @@
 #include <sstream>
 #include <fstream>
 #include <cstring>
-#include <cstdlib>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <pthread.h>
-#include <ctime>
-#include <cerrno>
 #include <map>
-#include "fs_init.hpp"
+#include "omni_storage.hpp"
 #include "file_ops.hpp"
 #include "user_manager.hpp"
 #include "logger.hpp"
 
-OFS_Instance g_fs_instance = nullptr;
+OmniStorage* g_storage = nullptr;
 std::map<std::string, std::string> active_sessions;
 
-// JSON utilities
 std::string extract_json_string(const std::string& json_str, const std::string& key) {
     size_t pos = json_str.find("\"" + key + "\"");
     if (pos == std::string::npos) return "";
@@ -41,6 +36,7 @@ std::string escape_json_string(const std::string& str) {
         else if (c == '\\') result += "\\\\";
         else if (c == '\n') result += "\\n";
         else if (c == '\r') result += "\\r";
+        else if (c == '\t') result += "\\t";
         else result += c;
     }
     return result;
@@ -51,12 +47,10 @@ std::string json_response(bool success, const std::string& message) {
            ",\"message\":\"" + escape_json_string(message) + "\"}";
 }
 
-// Get MIME type
 std::string get_mime_type(const std::string& filename) {
     if (filename.find(".html") != std::string::npos) return "text/html";
     if (filename.find(".css") != std::string::npos) return "text/css";
     if (filename.find(".js") != std::string::npos) return "application/javascript";
-    if (filename.find(".json") != std::string::npos) return "application/json";
     return "text/plain";
 }
 
@@ -71,25 +65,18 @@ std::string read_file(const std::string& filename) {
 std::string serve_static_file(const std::string& path) {
     std::string filename = "." + path;
     
-    // Security: prevent path traversal
     if (filename.find("..") != std::string::npos) {
-        return "HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\n403 Forbidden";
+        return "HTTP/1.1 403 Forbidden\r\n\r\n403 Forbidden";
     }
     
-    // Check if file exists
     struct stat buffer;
     if (stat(filename.c_str(), &buffer) != 0) {
-        return "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n404 Not Found";
+        return "HTTP/1.1 404 Not Found\r\n\r\n404 Not Found";
     }
     
-    // Read file
     std::string content = read_file(filename);
-    if (content.empty() && buffer.st_size > 0) {
-        return "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\n500 Error";
-    }
-    
-    // Return with appropriate MIME type
     std::string mime = get_mime_type(filename);
+    
     std::string response = "HTTP/1.1 200 OK\r\n";
     response += "Content-Type: " + mime + "\r\n";
     response += "Content-Length: " + std::to_string(content.length()) + "\r\n";
@@ -108,7 +95,6 @@ std::string handle_login(const std::string& body) {
         return json_response(false, "Missing credentials");
     }
     
-    // Check for duplicate sessions
     for (const auto& s : active_sessions) {
         if (s.second == username) {
             return json_response(false, "Already logged in");
@@ -118,7 +104,7 @@ std::string handle_login(const std::string& body) {
     OFS_Session session;
     int result = user_login(&session, username, password);
     
-    if (result == static_cast<int>(OFSErrorCodes::SUCCESS)) {
+    if (result == 0) {
         std::string sid = username + "_" + std::to_string(time(0)) + "_" + std::to_string(rand());
         active_sessions[sid] = username;
         Logger::info("[LOGIN] " + username);
@@ -138,12 +124,12 @@ std::string handle_signup(const std::string& body) {
     
     int result = user_create(username, password);
     
-    if (result == static_cast<int>(OFSErrorCodes::SUCCESS)) {
+    if (result == 0) {
         Logger::info("[SIGNUP] " + username);
         return json_response(true, "Created");
     }
     
-    return json_response(false, "Failed");
+    return json_response(false, "User already exists");
 }
 
 std::string handle_file_create(const std::string& body) {
@@ -152,14 +138,14 @@ std::string handle_file_create(const std::string& body) {
     
     if (path.empty()) return json_response(false, "No path");
     
-    int result = file_create(g_fs_instance, path, (void*)content.c_str(), content.length());
+    int result = file_create(nullptr, path, content.c_str(), content.length());
     
-    if (result == static_cast<int>(OFSErrorCodes::SUCCESS)) {
+    if (result == 0) {
         Logger::info("[FILE] Create: " + path);
         return json_response(true, "Created");
     }
     
-    return json_response(false, "Failed");
+    return json_response(false, get_error_message(result));
 }
 
 std::string handle_file_read(const std::string& body) {
@@ -167,15 +153,17 @@ std::string handle_file_read(const std::string& body) {
     
     if (path.empty()) return json_response(false, "No path");
     
-    char buffer[65536];
-    int size = file_read(g_fs_instance, path, buffer, sizeof(buffer));
+    void* buffer;
+    size_t size;
+    int result = file_read(nullptr, path, &buffer, &size);
     
-    if (size > 0) {
-        std::string content(buffer, size);
+    if (result == 0) {
+        std::string content((char*)buffer, size);
+        free_buffer(buffer);
         return "{\"success\":true,\"content\":\"" + escape_json_string(content) + "\"}";
     }
     
-    return json_response(false, "Failed");
+    return json_response(false, get_error_message(result));
 }
 
 std::string handle_file_edit(const std::string& body) {
@@ -184,15 +172,15 @@ std::string handle_file_edit(const std::string& body) {
     
     if (path.empty()) return json_response(false, "No path");
     
-    file_delete(g_fs_instance, path);
-    int result = file_create(g_fs_instance, path, (void*)content.c_str(), content.length());
+    file_delete(nullptr, path);
+    int result = file_create(nullptr, path, content.c_str(), content.length());
     
-    if (result == static_cast<int>(OFSErrorCodes::SUCCESS)) {
+    if (result == 0) {
         Logger::info("[FILE] Edit: " + path);
         return json_response(true, "Updated");
     }
     
-    return json_response(false, "Failed");
+    return json_response(false, get_error_message(result));
 }
 
 std::string handle_file_delete(const std::string& body) {
@@ -200,23 +188,45 @@ std::string handle_file_delete(const std::string& body) {
     
     if (path.empty()) return json_response(false, "No path");
     
-    int result = file_delete(g_fs_instance, path);
+    int result = file_delete(nullptr, path);
     
-    if (result == static_cast<int>(OFSErrorCodes::SUCCESS)) {
+    if (result == 0) {
         Logger::info("[FILE] Delete: " + path);
         return json_response(true, "Deleted");
     }
     
-    return json_response(false, "Failed");
+    return json_response(false, get_error_message(result));
 }
 
 std::string handle_file_list(const std::string& body) {
     std::string path = extract_json_string(body, "path");
     if (path.empty()) path = "/";
     
-    std::stringstream result;
-    result << "{\"success\":true,\"files\":[]}";
-    return result.str();
+    FileEntry* entries;
+    int count;
+    int result = dir_list(nullptr, path, &entries, &count);
+    
+    std::stringstream json;
+    json << "{\"success\":true,\"files\":[";
+    
+    if (result == 0 && count > 0) {
+        for (int i = 0; i < count; i++) {
+            if (i > 0) json << ",";
+            json << "{";
+            json << "\"name\":\"" << escape_json_string(entries[i].name) << "\",";
+            json << "\"type\":\"" << (entries[i].type == 1 ? "directory" : "file") << "\",";
+            json << "\"size\":" << entries[i].size << ",";
+            
+            std::string full_path = (path == "/") ? "/" + std::string(entries[i].name) : path + "/" + entries[i].name;
+            json << "\"path\":\"" << escape_json_string(full_path) << "\"";
+            json << "}";
+        }
+        
+        free_buffer(entries);
+    }
+    
+    json << "]}";
+    return json.str();
 }
 
 std::string handle_directory_create(const std::string& body) {
@@ -224,14 +234,14 @@ std::string handle_directory_create(const std::string& body) {
     
     if (path.empty()) return json_response(false, "No path");
     
-    int result = dir_create(g_fs_instance, path);
+    int result = dir_create(nullptr, path);
     
-    if (result == static_cast<int>(OFSErrorCodes::SUCCESS)) {
+    if (result == 0) {
         Logger::info("[DIR] Create: " + path);
         return json_response(true, "Created");
     }
     
-    return json_response(false, "Failed");
+    return json_response(false, get_error_message(result));
 }
 
 std::string handle_http_request(const std::string& http_request) {
@@ -240,16 +250,12 @@ std::string handle_http_request(const std::string& http_request) {
     ss >> method >> path >> protocol;
     
     size_t header_end = http_request.find("\r\n\r\n");
-    if (header_end == std::string::npos) {
-        header_end = http_request.find("\n\n");
-    }
+    if (header_end == std::string::npos) header_end = http_request.find("\n\n");
     
-    std::string body = header_end != std::string::npos ? 
-                      http_request.substr(header_end + 4) : "";
+    std::string body = header_end != std::string::npos ? http_request.substr(header_end + 4) : "";
     
     std::cout << "[HTTP] " << method << " " << path << std::endl;
     
-    // Static files
     if (method == "GET") {
         if (path == "/" || path == "/index.html") {
             return serve_static_file("/web/index.html");
@@ -259,50 +265,31 @@ std::string handle_http_request(const std::string& http_request) {
         return serve_static_file("/web/index.html");
     }
     
-    // API
     if (method == "POST") {
         std::string response;
         
-        if (path == "/user/login") {
-            response = handle_login(body);
-        } else if (path == "/user/signup") {
-            response = handle_signup(body);
-        } else if (path == "/file/list") {
-            response = handle_file_list(body);
-        } else if (path == "/file/create") {
-            response = handle_file_create(body);
-        } else if (path == "/file/read") {
-            response = handle_file_read(body);
-        } else if (path == "/file/edit") {
-            response = handle_file_edit(body);
-        } else if (path == "/file/delete") {
-            response = handle_file_delete(body);
-        } else if (path == "/directory/create") {
-            response = handle_directory_create(body);
-        } else {
-            response = json_response(false, "Unknown endpoint");
-        }
+        if (path == "/user/login") response = handle_login(body);
+        else if (path == "/user/signup") response = handle_signup(body);
+        else if (path == "/file/list") response = handle_file_list(body);
+        else if (path == "/file/create") response = handle_file_create(body);
+        else if (path == "/file/read") response = handle_file_read(body);
+        else if (path == "/file/edit") response = handle_file_edit(body);
+        else if (path == "/file/delete") response = handle_file_delete(body);
+        else if (path == "/directory/create") response = handle_directory_create(body);
+        else response = json_response(false, "Unknown endpoint");
         
         std::string http_response = "HTTP/1.1 200 OK\r\n";
         http_response += "Content-Type: application/json\r\n";
         http_response += "Content-Length: " + std::to_string(response.length()) + "\r\n";
         http_response += "Access-Control-Allow-Origin: *\r\n";
-        http_response += "Connection: close\r\n";
-        http_response += "\r\n";
+        http_response += "Connection: close\r\n\r\n";
         http_response += response;
         
         return http_response;
     }
     
     if (method == "OPTIONS") {
-        std::string http_response = "HTTP/1.1 200 OK\r\n";
-        http_response += "Access-Control-Allow-Origin: *\r\n";
-        http_response += "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n";
-        http_response += "Access-Control-Allow-Headers: Content-Type\r\n";
-        http_response += "Content-Length: 0\r\n";
-        http_response += "Connection: close\r\n";
-        http_response += "\r\n";
-        return http_response;
+        return "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n";
     }
     
     return "HTTP/1.1 405 Method Not Allowed\r\n\r\n";
@@ -326,18 +313,41 @@ void* handle_client(void* arg) {
 }
 
 int main() {
-    std::cout << "[*] Initializing filesystem..." << std::endl;
+    std::cout << "╔════════════════════════════════════╗" << std::endl;
+    std::cout << "║  OFS - Complete Implementation     ║" << std::endl;
+    std::cout << "╚════════════════════════════════════╝" << std::endl;
     
-    int fs_result = fs_init(&g_fs_instance, "ofs.omni", "default.uconf", "secret");
-    if (fs_result != 0) {
-        std::cerr << "[✗] Init failed" << std::endl;
-        return 1;
+    system("mkdir -p logs data web");
+    
+    Logger::init();
+    
+    std::cout << "[*] Initializing storage..." << std::endl;
+    g_storage = new OmniStorage();
+    
+    struct stat st;
+    if (stat("data/system.omni", &st) != 0) {
+        std::cout << "[*] Creating new filesystem..." << std::endl;
+        if (!g_storage->create("data/system.omni", 104857600)) {
+            std::cerr << "[!] Failed to create filesystem" << std::endl;
+            return 1;
+        }
+    } else {
+        std::cout << "[*] Opening existing filesystem..." << std::endl;
+        if (!g_storage->open("data/system.omni")) {
+            std::cerr << "[!] Failed to open filesystem" << std::endl;
+            return 1;
+        }
     }
+    
+    set_storage_instance(g_storage);
+    
+    std::cout << "[*] Loading users..." << std::endl;
+    load_users();
     
     std::cout << "[*] Creating socket..." << std::endl;
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket < 0) {
-        std::cerr << "[✗] Socket failed" << std::endl;
+        std::cerr << "[!] Socket failed" << std::endl;
         return 1;
     }
     
@@ -351,12 +361,15 @@ int main() {
     
     std::cout << "[*] Binding to port 9000..." << std::endl;
     if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        std::cerr << "[✗] Bind failed" << std::endl;
+        std::cerr << "[!] Bind failed" << std::endl;
         return 1;
     }
     
     listen(server_socket, 20);
     std::cout << "[✓] Server running on http://localhost:9000" << std::endl;
+    std::cout << "[✓] Open http://localhost:9000 in your browser" << std::endl;
+    std::cout << "[✓] Default login: admin / admin123" << std::endl;
+    std::cout << std::endl;
     
     while (true) {
         struct sockaddr_in client_addr;
@@ -372,6 +385,8 @@ int main() {
     }
     
     close(server_socket);
-    fs_shutdown(g_fs_instance);
+    g_storage->close();
+    delete g_storage;
+    
     return 0;
 }

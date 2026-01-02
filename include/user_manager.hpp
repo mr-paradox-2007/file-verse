@@ -53,6 +53,11 @@ int user_create(OFS_Session admin_session, const std::string& username,
                 const std::string& password, UserRole role);
 
 /**
+ * Create new user (simplified version for signup)
+ */
+int user_create(const std::string& username, const std::string& password);
+
+/**
  * Delete user (admin only)
  */
 int user_delete(OFS_Session admin_session, const std::string& username);
